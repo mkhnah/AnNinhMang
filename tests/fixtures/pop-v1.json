@@ -1,0 +1,150 @@
+{
+  "contract": "DOCSIGN_POP_V1",
+  "valid": [
+    {
+      "payload": {
+        "algorithm": "RSA-PSS-3072",
+        "challenge_id": "ch-test-1234",
+        "challenge_nonce": "nonce-abcd-ef01",
+        "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "purpose": "REGISTER_KEY",
+        "schema_version": 1,
+        "user_id": "user-crypto-qa"
+      },
+      "canonical_utf8": "{\"algorithm\":\"RSA-PSS-3072\",\"challenge_id\":\"ch-test-1234\",\"challenge_nonce\":\"nonce-abcd-ef01\",\"fingerprint\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"purpose\":\"REGISTER_KEY\",\"schema_version\":1,\"user_id\":\"user-crypto-qa\"}",
+      "canonical_b64": "eyJhbGdvcml0aG0iOiJSU0EtUFNTLTMwNzIiLCJjaGFsbGVuZ2VfaWQiOiJjaC10ZXN0LTEyMzQiLCJjaGFsbGVuZ2Vfbm9uY2UiOiJub25jZS1hYmNkLWVmMDEiLCJmaW5nZXJwcmludCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJwdXJwb3NlIjoiUkVHSVNURVJfS0VZIiwic2NoZW1hX3ZlcnNpb24iOjEsInVzZXJfaWQiOiJ1c2VyLWNyeXB0by1xYSJ9"
+    },
+    {
+      "payload": {
+        "algorithm": "RSA-PSS-3072",
+        "challenge_id": "123e4567-e89b-42d3-a456-426614174000",
+        "challenge_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "purpose": "REGISTER_KEY",
+        "schema_version": 1,
+        "user_id": "123e4567-e89b-42d3-a456-426614174001"
+      },
+      "canonical_utf8": "{\"algorithm\":\"RSA-PSS-3072\",\"challenge_id\":\"123e4567-e89b-42d3-a456-426614174000\",\"challenge_nonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"fingerprint\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"purpose\":\"REGISTER_KEY\",\"schema_version\":1,\"user_id\":\"123e4567-e89b-42d3-a456-426614174001\"}",
+      "canonical_b64": "eyJhbGdvcml0aG0iOiJSU0EtUFNTLTMwNzIiLCJjaGFsbGVuZ2VfaWQiOiIxMjNlNDU2Ny1lODliLTQyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJjaGFsbGVuZ2Vfbm9uY2UiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwiZmluZ2VycHJpbnQiOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwicHVycG9zZSI6IlJFR0lTVEVSX0tFWSIsInNjaGVtYV92ZXJzaW9uIjoxLCJ1c2VyX2lkIjoiMTIzZTQ1NjctZTg5Yi00MmQzLWE0NTYtNDI2NjE0MTc0MDAxIn0="
+    }
+  ],
+  "invalid": [
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": true,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 2,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1.5,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "nguy\u1ec5n"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "a\"b"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "ECDSA-P256",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa",
+      "extra": "field"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "short",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa\n"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01\n",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    },
+    {
+      "algorithm": "RSA-PSS-3072",
+      "challenge_id": "ch-test-1234",
+      "challenge_nonce": "nonce-abcd-ef01",
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n",
+      "purpose": "REGISTER_KEY",
+      "schema_version": 1,
+      "user_id": "user-crypto-qa"
+    }
+  ]
+}

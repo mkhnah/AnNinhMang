@@ -36,6 +36,8 @@ class User(Base):
 
     # Relationships
     sessions = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
+    public_keys = relationship("PublicKey", back_populates="user", cascade="all, delete-orphan")
+    signing_challenges = relationship("SigningChallenge", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role} status={self.status}>"

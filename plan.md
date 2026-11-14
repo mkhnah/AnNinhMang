@@ -338,9 +338,9 @@ Dữ liệu ký không phải là tệp PDF thô, mà là bản kê khai (Manife
 }
 ```
 
-### 9.3. Chuẩn hóa Dữ liệu (Canonicalization - RFC 8785 JCS)
+### 9.3. Chuẩn hóa Manifest tài liệu (thiết kế Phase 4 — RFC 8785 JCS)
 Khi ký một đối tượng JSON giữa hai môi trường khác nhau (JavaScript trên trình duyệt và Python trên server), thứ tự các key, khoảng trắng, định dạng số thực và ký tự Unicode có thể bị sai lệch, dẫn đến việc chữ ký xác minh thất bại.
-Dự án áp dụng **RFC 8785 (JSON Canonicalization Scheme - JCS)**:
+Thiết kế manifest Phase 4 dự kiến áp dụng **RFC 8785 (JSON Canonicalization Scheme - JCS)** và phải được kiểm chứng riêng; Phase 3 chỉ dùng PoP schema v1:
 - Sắp xếp tất cả các thuộc tính của object theo thứ tự từ điển mã Unicode (Lexicographical ordering).
 - Loại bỏ hoàn toàn khoảng trắng dư thừa (` `), ký tự tab, ký tự xuống dòng (`\n`, `\r`).
 - Mã hóa chuỗi ký tự UTF-8 không có byte order mark (BOM).
@@ -1054,10 +1054,13 @@ graph TD
 - **Security Gate**: Kiểm tra nhiều lớp và chặn các cấu trúc chủ động trong bộ test; không tuyên bố phát hiện mọi mã độc. Xem `docs/phase2-report.md` về giới hạn parser.
 
 #### Phase 3: Quản lý Khóa Mật mã Phía Client (WebCrypto)
+
+**Phase 3 sử dụng canonicalization dành riêng cho PoP schema, không phải implementation RFC 8785 đầy đủ. Phase 4 phải đánh giá riêng định dạng payload ký tài liệu.**
+
 - **Mục tiêu**: Sinh cặp khóa RSA-PSS/ECDSA phía trình duyệt, sao lưu mã hóa và đăng ký PoP.
 - **Công việc**: Viết module WebCrypto, hàm xuất tệp `.pem.enc` (AES-GCM), API đăng ký khóa kèm chữ ký PoP.
 - **Đầu ra**: Người dùng có cặp khóa hợp lệ, Public Key được lưu trong bảng `public_keys`.
-- **Security Gate**: Private Key tuyệt đối không truyền lên server; kiểm tra PoP ngăn chặn mạo danh khóa.
+- **Security Gate**: Luồng ứng dụng không gửi Private Key lên server; PoP chứng minh sở hữu khóa trong context của tài khoản/challenge, không thay thế chứng thực danh tính. Backup-enabled có thể export PKCS#8 plaintext tạm trong JS memory trước khi mã hóa.
 
 #### Phase 4: Ký số Detached Manifest (RFC 8785 JCS)
 - **Mục tiêu**: Xây dựng tiến trình ký số phía client trên Manifest chuẩn hóa.
@@ -1222,7 +1225,7 @@ Một tính năng hoặc giai đoạn chỉ được coi là hoàn thành (**DON
 
 - [x] **Mục tiêu và ranh giới hệ thống rõ ràng**: Đã phân định rõ giữa chữ ký toán học và danh tính pháp lý; không ngộ nhận là Public CA.
 - [x] **Ràng buộc phần cứng 8GB RAM được giải quyết**: Kiến trúc Modular Monolith, Docker Compose profiles, memory limits và chế độ Lite native.
-- [x] **Thuật toán và chuẩn mật mã chính xác tuyệt đối**: RSA-PSS 3072-bit, SHA-256, RFC 8785 JCS, Proof-of-Possession.
+- [ ] **Kiểm chứng chuẩn mật mã theo từng giai đoạn**: Phase 3 đã kiểm tra RSA-PSS 3072-bit, SHA-256 và PoP schema v1; RFC 8785 cho manifest phải được đánh giá riêng ở Phase 4.
 - [x] **Quy trình ký nhất quán hai đầu**: Khắc phục hoàn toàn lỗi lệch dữ liệu ký thông qua Canonical Signed Manifest.
 - [x] **Mô hình đe dọa STRIDE và ma trận kiểm thử chi tiết**: Bao phủ 28 test cases có mã định danh và tiêu chí nghiệm thu rõ ràng.
 - [x] **Thiết kế cơ sở dữ liệu và ERD hoàn chỉnh**: Đầy đủ 9 bảng, khóa ngoại, unique constraints và index tối ưu.

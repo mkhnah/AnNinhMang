@@ -39,15 +39,15 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | **Phase 0** | Khởi tạo Dự án & Môi trường Native Siêu Nhẹ | P0 - Core | 10 | 10/10 | Hoàn thành |
 | **Phase 1** | Xác thực, Quản lý User & Phân quyền RBAC | P1 - Security | 11 | 11/11 | Hoàn thành |
 | **Phase 2** | Lưu trữ PDF Cục bộ & Quản lý Phiên bản | P0 - Core | 12 | 11/12 | Local hoàn thành; MinIO DEFERRED |
-| **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
-| **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 0/12 | Chưa bắt đầu |
+| **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 12/12 | Hoàn thành |
+| **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 0/12 | Sẵn sàng bắt đầu |
 | **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 0/11 | Chưa bắt đầu |
 | **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 8** | Bộ Kiểm thử An ninh Chuyên sâu (T-01 đến T-28) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 9** | Tính năng Nâng cao (PAdES / Blockchain) | P3 - Optional | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 10** | Benchmark, Tài liệu Kỹ thuật & Kịch bản Demo | P1 - Security | 11 | 0/11 | Chưa bắt đầu |
-| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **21/121 (17.4%)** | **Đang triển khai** |
+| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **44/121 (36.4%)** | **Đang triển khai** |
 
 ---
 
@@ -203,44 +203,53 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 ### GIAI ĐOẠN 3: QUẢN LÝ KHÓA PHÍA CLIENT (ZERO-TRUST KEY MANAGEMENT) (PHASE 3)
 *Mục tiêu: Sinh khóa bất đối xứng qua WebCrypto, sao lưu mã hóa AES-GCM và đăng ký Public Key kèm chữ ký PoP.*
 
-- [ ] **TASK-P3-01** `[Backend]` `[P0]` **Thiết kế Model `PublicKey` và `SigningChallenge`**:
+**Bằng chứng Phase 3 (14/11/2026, final remediation):** 134 backend tests (20 Phase 1 + 68 Phase 2 + 46 Phase 3), 38 frontend tests (16 crypto + 9 Keys offline/retry + 13 Documents) đã chạy đạt. Strict TypeScript và production build đạt; Alembic check không lệch schema. PoP v1 golden bytes và chữ ký thực tế JS ↔ Python đạt; dữ liệu DB thật giữ nguyên hash. READY cho phát triển Phase 4 theo release gates tự động, chưa phải chứng nhận production; browser E2E chưa chạy. Xem [`docs/phase3-report.md`](docs/phase3-report.md).
+
+- [x] **FIX-P3-01** — Sửa production build/TypedArray/PopPayload, type-check cả tests với strict.
+- [x] **FIX-P3-02** — Kiểm tra expiry bằng giờ SQLite trong atomic UPDATE; regression expiry/concurrency/rollback đạt.
+- [x] **FIX-P3-03** — Offline vẫn thấy key local; UNKNOWN/LOCAL_ONLY/REGISTERED/REGISTRATION_FAILED/REVOKED; retry key cũ với challenge mới, không mất operation error.
+- [x] **FIX-P3-04** — Contract PoP v1 giới hạn schema, golden vectors dùng chung, PoP JS ↔ Python; không tuyên bố RFC 8785 tổng quát.
+- [x] **FIX-P3-05** — Benchmark Node/Python tách biệt, PBKDF2 600000; RSS before/end, peak Not measured; báo cáo nêu rõ giới hạn.
+
+
+- [x] **TASK-P3-01** `[Backend]` `[P0]` **Thiết kế Model `PublicKey` và `SigningChallenge`**:
   - Bảng `public_keys`: `id (UUID PK)`, `user_id (FK)`, `algorithm (RSA-PSS-3072|ECDSA-P256)`, `spki_pem (TEXT)`, `fingerprint (VARCHAR 64 UK)`, `status (ACTIVE|REVOKED)`, `revoked_at`.
   - Bảng `signing_challenges`: `id (UUID PK)`, `challenge_nonce (VARCHAR 64 UK)`, `is_used (BOOLEAN)`, `expires_at`.
   - *DoD*: Bảng được tạo trong database cục bộ, có index cho fingerprint.
-- [ ] **TASK-P3-02** `[Crypto]` `[P0]` **Sinh Khóa RSA-PSS 3072-bit Phía Trình Duyệt (`frontend/src/crypto/keygen.ts`)**:
-  - Gọi `window.crypto.subtle.generateKey` với thuật toán RSA-PSS, 3072 bits, $e=65537$, SHA-256, MGF1-SHA256, `extractable: true`.
+- [x] **TASK-P3-02** `[Crypto]` `[P0]` **Sinh Khóa RSA-PSS 3072-bit Phía Trình Duyệt (`frontend/src/crypto/keygen.ts`)**:
+  - Gọi `window.crypto.subtle.generateKey` với thuật toán RSA-PSS, 3072 bits, $e=65537$, SHA-256, MGF1-SHA256; Mode A `extractable: false`, Mode B `extractable: true`.
   - *DoD*: Sinh cặp khóa bất đối xứng thành công trong RAM trình duyệt, không gửi private key đi đâu.
-- [ ] **TASK-P3-03** `[Crypto]` `[P0]` **Trích Xuất SPKI PEM & Tính Fingerprint Chuẩn Hóa**:
+- [x] **TASK-P3-03** `[Crypto]` `[P0]` **Trích Xuất SPKI PEM & Tính Fingerprint Chuẩn Hóa**:
   - Trích xuất Public Key thành SubjectPublicKeyInfo (SPKI) DER mảng byte.
   - Tính $\text{Fingerprint} = \text{SHA256}(\text{SPKI\_DER\_Bytes})$ dạng hex 64 ký tự.
   - Đóng gói thành chuỗi chuẩn PEM: `-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----`.
   - *DoD*: Fingerprint đồng nhất, không bị sai lệch bởi ký tự xuống dòng.
-- [ ] **TASK-P3-04** `[Crypto]` `[P1]` **Sao Lưu Private Key Mã Hóa Bằng Mật Khẩu (`.pem.enc`)**:
+- [x] **TASK-P3-04** `[Crypto]` `[P1]` **Sao Lưu Private Key Mã Hóa Bằng Mật Khẩu (`.pem.enc`)**:
   - Người dùng nhập Passphrase bảo vệ.
   - Dẫn xuất khóa 256-bit qua **PBKDF2-HMAC-SHA256** ($600{,}000$ vòng lặp, salt 16 bytes ngẫu nhiên).
   - Mã hóa Private Key bằng **AES-256-GCM** (96-bit nonce, 128-bit authentication tag).
-  - Xuất ra tệp JSON `.pem.enc`: `{ salt, iv, iterations, ciphertext, auth_tag, fingerprint }`.
+  - Xuất JSON `.pem.enc` theo schema version 1; `ciphertext_b64` chứa ciphertext nối tag 128-bit do WebCrypto trả về, không tách `auth_tag` riêng.
   - *DoD*: Private key lưu trữ ở trạng thái mã hóa mạnh; nhập sai mật khẩu sẽ giải mã thất bại.
-- [ ] **TASK-P3-05** `[Crypto]` `[P1]` **Khôi Phục Khóa từ Tệp Sao Lưu**: Tải tệp `.pem.enc` lên, nhập đúng Passphrase $\to$ Giải mã và nạp lại khóa vào IndexedDB trình duyệt.
+- [x] **TASK-P3-05** `[Crypto]` `[P1]` **Khôi Phục Khóa từ Tệp Sao Lưu**: Tải tệp `.pem.enc` lên, nhập đúng Passphrase $\to$ Giải mã và nạp lại khóa vào IndexedDB trình duyệt.
   - *DoD*: Tái tạo chính xác cặp khóa và đúng Fingerprint ban đầu.
-- [ ] **TASK-P3-06** `[Backend]` `[P1]` **API `POST /api/v1/keys/challenge`**: Sinh `challenge_nonce` ngẫu nhiên 32 bytes từ CSPRNG, lưu vào DB với thời gian sống TTL = 5 phút.
+- [x] **TASK-P3-06** `[Backend]` `[P1]` **API `POST /api/v1/keys/challenge`**: Sinh `challenge_nonce` ngẫu nhiên 32 bytes từ CSPRNG, lưu vào DB với thời gian sống TTL = 5 phút.
   - *DoD*: Trả về nonce ngẫu nhiên phục vụ kiểm tra sở hữu khóa.
-- [ ] **TASK-P3-07** `[Crypto]` `[P1]` **Ký Xác Thực Sở Hữu Khóa (Proof-of-Possession - PoP)**: Client dùng Private Key vừa sinh ký lên `challenge_nonce` nhận được từ server $\to$ Tạo ra `pop_signature` (Base64).
+- [x] **TASK-P3-07** `[Crypto]` `[P1]` **Ký Xác Thực Sở Hữu Khóa (Proof-of-Possession - PoP)**: Client dùng Private Key ký UTF-8 payload PoP schema v1 (user/challenge/nonce/purpose/algorithm/fingerprint/version), không chỉ nonce; trả chữ ký Base64.
   - *DoD*: Chữ ký PoP được tạo thành công ngay trên máy khách.
-- [ ] **TASK-P3-08** `[Backend]` `[P1]` **API `POST /api/v1/keys` (Kiểm Tra PoP & Đăng Ký Public Key)**:
-  - Tiếp nhận: `public_key_pem`, `algorithm`, `challenge_nonce`, `pop_signature`.
-  - Kiểm tra nonce hợp lệ trong DB; dùng Python `cryptography` chạy hàm `verify(public_key, pop_signature, nonce)`.
+- [x] **TASK-P3-08** `[Backend]` `[P1]` **API `POST /api/v1/keys` (Kiểm Tra PoP & Đăng Ký Public Key)**:
+  - Tiếp nhận: `public_key_pem`, `algorithm`, `challenge_id`, `pop_signature_b64`.
+  - Dựng lại PoP schema v1 từ DB, kiểm tra ownership/fingerprint/algorithm và xác minh RSA-PSS/SHA-256, salt 32 bytes.
   - Nếu đúng: Lưu Public Key vào DB, đánh dấu nonce đã sử dụng (`is_used = True`).
   - Nếu sai: Từ chối với lỗi `400 Bad Request`.
-  - *DoD*: Chặn đứng 100% nỗ lực đăng ký mạo danh Public Key của người khác.
-- [ ] **TASK-P3-09** `[Backend]` `[P0]` **API `GET /api/v1/keys/my`**: Trả về danh sách các khóa công khai của người dùng kèm fingerprint và trạng thái.
+  - *DoD*: Bộ test PoP sai/cross-user/replay/fingerprint/expiry/concurrency đạt; PoP không thay thế xác thực danh tính ngoài đời thực.
+- [x] **TASK-P3-09** `[Backend]` `[P0]` **API `GET /api/v1/keys/my`**: Trả về danh sách các khóa công khai của người dùng kèm fingerprint và trạng thái.
   - *DoD*: Hiển thị đúng danh sách khóa của tài khoản đang đăng nhập.
-- [ ] **TASK-P3-10** `[Backend]` `[P1]` **API `POST /api/v1/keys/{id}/revoke`**: Cho phép người dùng thu hồi khóa; cập nhật `status = 'REVOKED'`, `revoked_at = now()`.
-  - *DoD*: Khóa bị thu hồi không thể dùng để tạo chữ ký mới.
-- [ ] **TASK-P3-11** `[Frontend]` `[P0]` **Giao Diện Quản Lý Khóa Cá Nhân (`frontend/src/pages/Keys/`)**: Sinh khóa mới, tải về file backup `.pem.enc`, import khôi phục khóa, nút bấm thu hồi khóa.
+- [x] **TASK-P3-10** `[Backend]` `[P1]` **API `POST /api/v1/keys/{id}/revoke`**: Cho phép người dùng thu hồi khóa; cập nhật `status = 'REVOKED'`, `revoked_at = now()`.
+  - *DoD*: Owner revoke/idempotency/state tests đạt; Phase 4 phải kiểm tra ACTIVE ở backend khi tiếp nhận chữ ký mới.
+- [x] **TASK-P3-11** `[Frontend]` `[P0]` **Giao Diện Quản Lý Khóa Cá Nhân (`frontend/src/pages/Keys/`)**: Sinh khóa mới, tải về file backup `.pem.enc`, import khôi phục khóa, nút bấm thu hồi khóa.
   - *DoD*: Người dùng tự chủ hoàn toàn vòng đời khóa của mình trên giao diện.
-- [ ] **TASK-P3-12** `[Crypto]` `[P1]` **Làm Sạch Bộ Nhớ RAM Sau Khi Ký (Memory Zeroization)**: Dùng `Uint8Array.fill(0)` làm sạch buffer mật khẩu và private key thô trong bộ nhớ JS sau khi phiên ký hoàn tất.
-  - *DoD*: Giảm thiểu tối đa nguy cơ rò rỉ khóa qua dump bộ nhớ trình duyệt.
+- [x] **TASK-P3-12** `[Crypto]` `[P1]` **Giảm Thời Gian Tồn Tại Dữ Liệu Nhạy Cảm (Memory Hygiene)**: Dùng `Uint8Array.fill(0)` làm sạch buffer PKCS#8 thô khi hoàn tất backup/restore; giải phóng dữ liệu tạm theo best effort, không bảo đảm memory zeroization.
+  - *DoD*: Best-effort xóa PKCS#8 typed buffers và tham chiếu; không bảo đảm xóa bản sao do JS engine/WebCrypto tạo. Backup-enabled có plaintext PKCS#8 tạm trong JS memory.
 
 ---
 
@@ -255,7 +264,7 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
   - *DoD*: Định nghĩa schema thống nhất giữa TypeScript (frontend) và Pydantic (backend).
 - [ ] **TASK-P4-03** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Client**: Dùng thư viện `canonicalize` (npm) sắp xếp keys theo từ điển, loại bỏ khoảng trắng, mã hóa UTF-8.
   - *DoD*: Sinh ra chuỗi canonical bytes tất định trên trình duyệt.
-- [ ] **TASK-P4-04** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Backend Python**: Dùng thư viện `jcs` hoặc format JSON tất định: `json.dumps(obj, sort_keys=True, separators=(',', ':'))`.
+- [ ] **TASK-P4-04** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Backend Python**: Đánh giá implementation RFC 8785 đã kiểm chứng và test vectors riêng; không coi `json.dumps(sort_keys=True)` hoặc contract PoP v1 là JCS đầy đủ.
   - *DoD*: Vượt qua bài kiểm thử **Test Vector `T-22`**: Output canonical bytes của JS và Python trùng nhau 100%.
 - [ ] **TASK-P4-05** `[Backend]` `[P0]` **API `POST /api/v1/documents/{id}/versions/{vid}/prepare-sign`**:
   - Khóa phiên bản sang `READY_TO_SIGN`.

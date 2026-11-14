@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, User as UserIcon, LogOut, ShieldAlert, FileText } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, LogOut, ShieldAlert, FileText, Key } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -50,6 +50,20 @@ export const Navbar: React.FC = () => {
                   <span className="flex items-center gap-1.5">
                     <FileText className="w-4 h-4" />
                     Tài liệu
+                  </span>
+                </Link>
+
+                <Link
+                  to="/keys"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/keys')
+                      ? 'bg-sky-50 text-sky-700'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Key className="w-4 h-4" />
+                    Quản lý Khóa
                   </span>
                 </Link>
 

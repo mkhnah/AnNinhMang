@@ -1,0 +1,77 @@
+{
+  "runtime": "Python 3.13.9 cryptography/OpenSSL",
+  "platform": "macOS-14.5-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "physical_memory_bytes": 8589934592,
+  "method": "Three sequential synthetic samples per stage, no network/browser/IndexedDB. AES-only times exclude KDF. Verification uses fixed synthetic fixture bytes; not full HTTP request latency. RSS before/end only; no peak, memory-leak, swap or SLA claims.",
+  "rss_before_bytes": 27557888,
+  "rss_end_bytes": 30146560,
+  "peak_rss_bytes": null,
+  "peak_rss_status": "Not measured",
+  "cpu_seconds": 0.642212,
+  "results": {
+    "rsa3072_keygen": {
+      "samples_ms": [
+        177.72700000205077,
+        76.47683300092467,
+        247.70575000002282
+      ],
+      "mean_ms": 167.30319433433274,
+      "median_ms": 177.72700000205077
+    },
+    "spki_parse": {
+      "samples_ms": [
+        1.003582998237107,
+        0.0056249991757795215,
+        0.004165998689131811
+      ],
+      "mean_ms": 0.3377913320340061,
+      "median_ms": 0.0056249991757795215
+    },
+    "spki_sha256": {
+      "samples_ms": [
+        0.01904199962154962,
+        0.006666999979643151,
+        0.003749999450519681
+      ],
+      "mean_ms": 0.009819666350570818,
+      "median_ms": 0.006666999979643151
+    },
+    "pbkdf2_sha256_600000": {
+      "samples_ms": [
+        62.97812499906286,
+        60.32200000117882,
+        59.74495799819124
+      ],
+      "mean_ms": 61.015027666144306,
+      "median_ms": 60.32200000117882
+    },
+    "aes256gcm_encrypt_pkcs8_only": {
+      "samples_ms": [
+        0.5062910022388678,
+        0.00541600093129091,
+        0.004792000254383311
+      ],
+      "mean_ms": 0.17216633447484733,
+      "median_ms": 0.00541600093129091
+    },
+    "aes256gcm_decrypt_pkcs8_only": {
+      "samples_ms": [
+        0.004624998837243766,
+        0.0034999975468963385,
+        0.002750002749962732
+      ],
+      "mean_ms": 0.0036249997113676122,
+      "median_ms": 0.0034999975468963385
+    },
+    "rsa_pss_verify": {
+      "samples_ms": [
+        0.06395799937308766,
+        0.05608300125459209,
+        0.05354200038709678
+      ],
+      "mean_ms": 0.05786100033825884,
+      "median_ms": 0.05608300125459209
+    }
+  }
+}

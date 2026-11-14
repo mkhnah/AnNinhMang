@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Profile';
 import { Documents, DocumentDetail } from './pages/Documents';
+import { KeyManagement } from './pages/Keys';
 import { AdminOverview } from './pages/AdminOverview';
 import { Forbidden } from './pages/Forbidden';
 import { NotFound } from './pages/NotFound';
@@ -58,6 +59,14 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/keys"
+                element={
+                  <ProtectedRoute>
+                    <KeyManagement />
                   </ProtectedRoute>
                 }
               />

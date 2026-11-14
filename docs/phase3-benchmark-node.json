@@ -1,0 +1,58 @@
+{
+  "runtime": "Node v20.12.0 WebCrypto",
+  "platform": "darwin 23.5.0 arm64",
+  "physical_memory_bytes": 8589934592,
+  "method": "Three sequential samples using actual frontend crypto modules bundled in memory. Node WebCrypto, not a real browser. No IndexedDB/browser timing. No SLA or browser extrapolation. Keygen stage includes public export/fingerprint. Backup/restore include the default 600000-iteration KDF.",
+  "rss_before_bytes": 37568512,
+  "rss_end_bytes": 43663360,
+  "peak_rss_bytes": null,
+  "peak_rss_status": "Not measured",
+  "cpu_seconds": 1.990367,
+  "results": {
+    "rsa3072_keygen": {
+      "samples_ms": [
+        365.59875,
+        203.11970800000006,
+        312.12525000000005
+      ],
+      "mean_ms": 293.61456933333335,
+      "median_ms": 312.12525000000005
+    },
+    "spki_export_and_fingerprint": {
+      "samples_ms": [
+        0.2146660000000793,
+        0.16804099999990285,
+        0.28987499999993815
+      ],
+      "mean_ms": 0.22419399999997344,
+      "median_ms": 0.2146660000000793
+    },
+    "pbkdf2_sha256_600000": {
+      "samples_ms": [
+        123.19229099999995,
+        121.75295800000004,
+        120.71454199999994
+      ],
+      "mean_ms": 121.88659699999998,
+      "median_ms": 121.75295800000004
+    },
+    "backup_total_default_600000": {
+      "samples_ms": [
+        120.36762499999998,
+        118.92962499999999,
+        119.57154100000002
+      ],
+      "mean_ms": 119.62293033333333,
+      "median_ms": 119.57154100000002
+    },
+    "restore_total_default_600000": {
+      "samples_ms": [
+        127.65525000000002,
+        133.267875,
+        125.54945899999984
+      ],
+      "mean_ms": 128.8241946666666,
+      "median_ms": 127.65525000000002
+    }
+  }
+}

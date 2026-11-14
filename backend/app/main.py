@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
-from backend.app.api.v1 import auth, admin, documents
+from backend.app.api.v1 import auth, admin, documents, keys
 
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
@@ -62,6 +62,7 @@ async def security_headers_middleware(request: Request, call_next):
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
+app.include_router(keys.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])
@@ -71,5 +72,5 @@ def health_check():
         "status": "healthy",
         "mode": "native-macos",
         "database": "sqlite" if settings.DATABASE_URL.startswith("sqlite") else "postgres",
-        "phase": "2-secure-documents"
+        "phase": "3-client-side-keys"
     }
