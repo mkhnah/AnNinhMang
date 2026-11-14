@@ -1,0 +1,36 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Database & Storage
+data/db/*.db
+data/db/*.db-journal
+data/db/*.sqlite3
+data/storage/documents/*
+!data/storage/documents/.gitkeep
+
+# Secrets & Keys
+.env
+*.pem
+*.enc
+*.key
+*.cert
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
