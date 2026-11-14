@@ -21,3 +21,7 @@ cryptography>=42.0.5
 pytest>=8.1.1
 pytest-asyncio>=0.23.6
 httpx>=0.27.0
+
+# Bounded PDF parsing and real RSS measurements
+pypdf==7.1.0
+psutil>=7.2,<8

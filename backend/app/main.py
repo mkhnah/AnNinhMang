@@ -1,16 +1,22 @@
 import time
+import tempfile
+from backend.app.storage.local import LocalStorageService, REPOSITORY
+from backend.app.core.upload_limit import UploadLimitMiddleware
 import logging
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
-from backend.app.api.v1 import auth, admin
+from backend.app.api.v1 import auth, admin, documents
 
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("docsign.app")
+
+# Multipart spool files stay in the repository, including uploads over 1MB.
+tempfile.tempdir = str(LocalStorageService(REPOSITORY / "data" / "tmp").root)
 
 app = FastAPI(
     title="Digital Document Signing & Verification API",
@@ -19,6 +25,8 @@ app = FastAPI(
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None
 )
+
+app.add_middleware(UploadLimitMiddleware)
 
 # CORS Configuration
 app.add_middleware(
@@ -53,6 +61,7 @@ async def security_headers_middleware(request: Request, call_next):
 # Include API Routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(documents.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])
@@ -62,5 +71,5 @@ def health_check():
         "status": "healthy",
         "mode": "native-macos",
         "database": "sqlite" if settings.DATABASE_URL.startswith("sqlite") else "postgres",
-        "phase": "1-auth-rbac"
+        "phase": "2-secure-documents"
     }

@@ -6,7 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Profile';
-import { Home } from './pages/Home';
+import { Documents, DocumentDetail } from './pages/Documents';
 import { AdminOverview } from './pages/AdminOverview';
 import { Forbidden } from './pages/Forbidden';
 import { NotFound } from './pages/NotFound';
@@ -49,7 +49,7 @@ export const App: React.FC = () => {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Home />
+                    <Documents />
                   </ProtectedRoute>
                 }
               />
@@ -61,6 +61,9 @@ export const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+
+              <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+              <Route path="/documents/:id" element={<ProtectedRoute><DocumentDetail /></ProtectedRoute>} />
 
               {/* Admin Protected Routes */}
               <Route

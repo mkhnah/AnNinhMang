@@ -113,3 +113,23 @@ Hoặc chạy trực tiếp với pytest:
   - Đăng nhập (Argon2id verify + JWT): ~33 ms.
   - Lấy thông tin cá nhân (`/users/me`): ~2.4 ms.
   - Token Rotation: ~3.7 ms.
+
+## Phase 2 — PDF và phiên bản
+
+Mở `/documents` sau đăng nhập để tải PDF lên, xem lịch sử, tải xuống và sao chép SHA-256. Mỗi phiên bản giữ nguyên bytes. Chức năng khóa chỉ chuyển `DRAFT → READY_TO_SIGN`; ký số chưa được triển khai.
+
+```bash
+venv/bin/pip install -r requirements.txt
+DEBUG=false venv/bin/alembic upgrade head
+npm ci --prefix frontend
+venv/bin/pytest -q
+npm test --prefix frontend
+npm run build --prefix frontend
+DEBUG=false bash scripts/dev_start.sh
+```
+
+`DEBUG=false` tránh xung đột nếu shell có biến `DEBUG=release`. Giới hạn mặc định 20 MiB; thay `MAX_UPLOAD_BYTES` trong `.env` và restart backend, UI đọc giới hạn qua API. Các giới hạn parser được mô tả trong `.env.example`. Multipart spool và temp của worker ở `data/tmp/`.
+
+- [Báo cáo Phase 2, API, kiểm thử, phục hồi và rủi ro](docs/phase2-report.md)
+- [Số đo benchmark thực tế](docs/phase2-benchmark.json)
+- Khi cần kiểm tra sau crash: dừng upload, chạy `DEBUG=false venv/bin/python scripts/reconcile_storage.py`. Script chỉ báo cáo, không xóa dữ liệu.

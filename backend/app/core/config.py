@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     STORAGE_BACKEND: str = "local"
     LOCAL_STORAGE_PATH: str = "./data/storage/documents"
 
+    MAX_UPLOAD_BYTES: int = Field(20 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    PDF_TIMEOUT_SECONDS: float = Field(5.0, gt=0, le=30)
+    PDF_CPU_SECONDS: int = Field(3, ge=1, le=10)
+    PDF_MEMORY_MB: int = Field(256, ge=64, le=512)
+    PDF_MAX_OBJECTS: int = Field(50000, ge=100, le=100000)
+    PDF_MAX_DEPTH: int = Field(64, ge=8, le=128)
+
     # Security Keys
     SECRET_KEY: str = Field(..., description="Application secret key for signing")
     JWT_SECRET_KEY: str = Field(..., description="Secret key for JWT generation and verification")

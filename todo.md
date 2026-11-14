@@ -38,7 +38,7 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Phase 0** | Khởi tạo Dự án & Môi trường Native Siêu Nhẹ | P0 - Core | 10 | 10/10 | Hoàn thành |
 | **Phase 1** | Xác thực, Quản lý User & Phân quyền RBAC | P1 - Security | 11 | 11/11 | Hoàn thành |
-| **Phase 2** | Lưu trữ PDF Cục bộ & Quản lý Phiên bản | P0 - Core | 12 | 0/12 | Sẵn sàng bắt đầu |
+| **Phase 2** | Lưu trữ PDF Cục bộ & Quản lý Phiên bản | P0 - Core | 12 | 11/12 | Local hoàn thành; MinIO DEFERRED |
 | **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 0/11 | Chưa bắt đầu |
@@ -161,42 +161,44 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 ### GIAI ĐOẠN 2: LƯU TRỮ PDF CỤC BỘ & QUẢN LÝ PHIÊN BẢN (PHASE 2)
 *Mục tiêu: Tiếp nhận tệp PDF, kiểm duyệt an ninh, lưu trữ cục bộ bảo toàn mảng byte và tính băm SHA-256.*
 
-- [ ] **TASK-P2-01** `[Backend]` `[P0]` **Thiết kế Model `Document` và `DocumentVersion`**:
+- [x] **TASK-P2-01** `[Backend]` `[P0]` **Thiết kế Model `Document` và `DocumentVersion`**:
   - Bảng `documents`: `id (UUID PK)`, `owner_id (FK users)`, `title`, `visibility`, `created_at`.
   - Bảng `document_versions`: `id (UUID PK)`, `document_id (FK)`, `version_no (INT)`, `file_sha256 (VARCHAR 64)`, `storage_key`, `file_size_bytes`, `state (DRAFT|READY_TO_SIGN|SIGNED)`, `created_at`.
   - *DoD*: Model định nghĩa đầy đủ quan hệ một-nhiều giữa Document và DocumentVersion.
-- [ ] **TASK-P2-02** `[Backend]` `[P0]` **Interface Trừu tượng `IStorageService` (`app/storage/base.py`)**: Khai báo các hàm: `save_file(key, bytes)`, `get_file(key) -> bytes`, `exists(key) -> bool`.
+- [x] **TASK-P2-02** `[Backend]` `[P0]` **Interface Trừu tượng `IStorageService` (`app/storage/base.py`)**: Khai báo các hàm: `save_file(key, bytes)`, `get_file(key) -> bytes`, `exists(key) -> bool`.
   - *DoD*: Chuẩn hóa interface giúp đổi adapter lưu trữ mà không sửa code nghiệp vụ ký số.
-- [ ] **TASK-P2-03** `[Backend]` `[P0]` **Cài đặt `LocalStorageService` Làm Bộ Lưu Trữ Chính (`app/storage/local.py`)**:
+- [x] **TASK-P2-03** `[Backend]` `[P0]` **Cài đặt `LocalStorageService` Làm Bộ Lưu Trữ Chính (`app/storage/local.py`)**:
   - Lưu file trực tiếp vào `data/storage/documents/{doc_uuid}/v{ver}_{ver_uuid}.pdf`.
   - Đọc/ghi theo mảng byte nhị phân tuyệt đối (`rb`, `wb`), bảo toàn nguyên vẹn 100% từng bit dữ liệu.
-  - Tốn **0MB RAM phụ**, tốc độ đọc ghi SSD macOS đạt hàng nghìn MB/s.
+  - Ghi theo chunk 64KB, file tạm + fsync + hard-link nguyên tử không ghi đè; số đo thực tế trong `docs/phase2-benchmark.json`.
   - *DoD*: Unit test lưu và đọc lại file PDF thành công, hash SHA-256 trước và sau ghi trùng khớp hoàn toàn.
-- [ ] **TASK-P2-04** `[Backend]` `[P3]` **`MinioStorageService` Tùy Chọn Dự Phòng**: Cài đặt adapter kết nối MinIO S3 nếu sau này muốn bật profile container.
+- [ ] **TASK-P2-04** `[Backend]` `[P3]` **`MinioStorageService` Tùy Chọn Dự Phòng**: **DEFERRED** — chưa cài adapter; native chỉ phụ thuộc local. Protocol sẵn sàng cho adapter tương lai, cấu hình minio hiện bị từ chối rõ ràng.
   - *DoD*: Khi `STORAGE_BACKEND=minio` thì dùng MinIO; mặc định là `local`.
-- [ ] **TASK-P2-05** `[Crypto]` `[P1]` **Stream Tính Băm SHA-256 (`app/crypto/hasher.py`)**: Đọc tệp PDF theo từng khối chunk 64KB và tính SHA-256 (FIPS 180-4), đảm bảo file 20MB không làm tăng RAM backend quá 10MB.
+- [x] **TASK-P2-05** `[Crypto]` `[P1]` **Stream Tính Băm SHA-256 (`app/crypto/hasher.py`)**: Đọc tệp PDF theo từng khối chunk 64KB và tính SHA-256 (FIPS 180-4), đối chiếu reference trên 1/5/10MB; RAM/CPU đo thực tế, không cam kết mức RAM chưa kiểm chứng.
   - *DoD*: Tính toán mã băm SHA-256 chính xác tuyệt đối theo chuẩn NIST.
-- [ ] **TASK-P2-06** `[Backend]` `[P1]` **Kiểm tra Magic Bytes PDF (`app/services/pdf_validator.py`)**:
+- [x] **TASK-P2-06** `[Backend]` `[P1]` **Kiểm tra Magic Bytes PDF (`app/services/pdf_validator.py`)**:
   - Kiểm tra 5 bytes đầu tiên của file: Bắt buộc là `%PDF-` (`0x25 0x50 0x44 0x46 0x2D`).
   - *DoD*: Chặn đứng file thực thi `.exe`, file script `.php` đổi tên đuôi `.pdf`, trả về lỗi `415`.
-- [ ] **TASK-P2-07** `[Backend]` `[P1]` **Quét AST Khử Độc JavaScript Nhúng Trong PDF**:
-  - Dùng `pypdf` duyệt cây đối tượng PDF trong môi trường Timeout 3 giây.
+- [x] **TASK-P2-07** `[Backend]` `[P1]` **Quét Object Tree và Từ Chối Nội Dung Chủ Động**:
+  - Dùng `pypdf` trong subprocess: CPU 3 giây, wall time 5 giây, RSS 256MB, 50.000 lượt duyệt, sâu 64; tối đa 2 parser đồng thời mỗi process.
   - Phát hiện và từ chối các tệp chứa thẻ thực thi tự động: `/JavaScript`, `/JS`, `/Launch`, `/SubmitForm`.
   - *DoD*: Phát hiện và chặn tệp PDF độc hại, ghi cảnh báo an ninh.
-- [ ] **TASK-P2-08** `[Backend]` `[P1]` **Khử Độc Tên Tệp & Đặt Tên Bằng UUID**: Loại bỏ ký tự Path Traversal (`../`), lưu tệp trên ổ cứng hoàn toàn bằng UUID ngẫu nhiên.
+- [x] **TASK-P2-08** `[Backend]` `[P1]` **Khử Độc Tên Tệp & Đặt Tên Bằng UUID**: Loại bỏ ký tự Path Traversal (`../`), lưu tệp trên ổ cứng hoàn toàn bằng UUID ngẫu nhiên.
   - *DoD*: Tên file tải lên có chứa ký tự độc hại không gây ảnh hưởng đến hệ thống file máy chủ.
-- [ ] **TASK-P2-09** `[Backend]` `[P0]` **API `POST /api/v1/documents`**: Nhận file PDF, kiểm duyệt an ninh, lưu vào thư mục local, ghi nhận phiên bản v1 trạng thái `DRAFT`.
+- [x] **TASK-P2-09** `[Backend]` `[P0]` **API `POST /api/v1/documents`**: Nhận file PDF, kiểm duyệt an ninh, lưu vào thư mục local, ghi nhận phiên bản v1 trạng thái `DRAFT`.
   - *DoD*: Tải lên thành công trả về `document_id`, `version_id`, `file_sha256`.
-- [ ] **TASK-P2-10** `[Backend]` `[P1]` **API `GET /api/v1/documents/{id}/versions/{vid}/download` Chống IDOR**:
+- [x] **TASK-P2-10** `[Backend]` `[P1]` **API `GET /api/v1/documents/{id}/versions/{vid}/download` Chống IDOR**:
   - Kiểm tra quyền sở hữu tại Service layer: `doc.owner_id == current_user.id`.
-  - Người dùng khác cố tình truy cập bị chặn đứng bằng mã lỗi `403 Forbidden`.
+  - Người dùng khác nhận `404` nhất quán để hạn chế tiết lộ tài liệu.
   - *DoD*: Đã kiểm thử ngăn chặn truy cập chéo tài liệu giữa 2 tài khoản.
-- [ ] **TASK-P2-11** `[Backend]` `[P1]` **Quy Tắc Bất Biến (Version Immutability)**: Khi phiên bản đạt trạng thái `SIGNED`, từ chối mọi yêu cầu ghi đè file hoặc cập nhật `file_sha256`.
+- [x] **TASK-P2-11** `[Backend]` `[P1]` **Quy Tắc Bất Biến (Version Immutability)**: Nội dung/hash/key bất biến ở mọi trạng thái; DRAFT → READY_TO_SIGN khóa hash sau xác minh. SIGNED dành cho Phase 4, chưa có API chuyển sang SIGNED.
   - *DoD*: Cố tình sửa phiên bản đã ký trả về lỗi `409 Conflict`.
-- [ ] **TASK-P2-12** `[Frontend]` `[P0]` **Giao diện Danh Sách & Tải Lên Tài Liệu (`frontend/src/pages/Documents/`)**: Kéo thả file PDF, hiển thị mã băm SHA-256 rút gọn, danh sách phiên bản v1, v2...
+- [x] **TASK-P2-12** `[Frontend]` `[P0]` **Giao diện Danh Sách & Tải Lên Tài Liệu (`frontend/src/pages/Documents/`)**: Kéo thả file PDF, hiển thị mã băm SHA-256 rút gọn, danh sách phiên bản v1, v2...
   - *DoD*: Người dùng upload và xem danh sách tài liệu trực quan trên web.
 
 ---
+
+**Bằng chứng Phase 2 (14/11/2026):** 88 backend tests (20 Phase 1 + 68 Phase 2), 13 React DOM tests, production build và Alembic check đạt. Benchmark 24 mẫu tuần tự. Chi tiết, giới hạn và danh sách file: [`docs/phase2-report.md`](docs/phase2-report.md). Browser E2E chưa chạy.
 
 ### GIAI ĐOẠN 3: QUẢN LÝ KHÓA PHÍA CLIENT (ZERO-TRUST KEY MANAGEMENT) (PHASE 3)
 *Mục tiêu: Sinh khóa bất đối xứng qua WebCrypto, sao lưu mã hóa AES-GCM và đăng ký Public Key kèm chữ ký PoP.*

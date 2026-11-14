@@ -1,4 +1,5 @@
 import os
+import tempfile
 import pytest
 from pathlib import Path
 from typing import Generator
@@ -7,7 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Setup test database path
-TEST_DB_PATH = "./data/db/test_docsign.db"
+_TEST_DIRECTORY = tempfile.TemporaryDirectory(prefix="docsign-tests-", dir="./data/db")
+TEST_DB_PATH = str(Path(_TEST_DIRECTORY.name) / "test.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "false"
@@ -44,21 +46,15 @@ def setup_test_database():
 @pytest.fixture
 def db_session() -> Generator:
     """Provides a transactional database session per test with clean tables."""
-    # Truncate tables for clean state
-    connection = test_engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-
-    # Clean data in tables
-    session.query(AuthSession).delete()
-    session.query(User).delete()
+    session = TestingSessionLocal()
+    # Private database only; real commits/rollbacks must behave as in production.
+    for table in reversed(Base.metadata.sorted_tables):
+        session.execute(table.delete())
     session.commit()
-
-    yield session
-
-    session.close()
-    transaction.rollback()
-    connection.close()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @pytest.fixture

@@ -1049,9 +1049,9 @@ graph TD
 
 #### Phase 2: Lưu trữ Tài liệu PDF An toàn & Quản lý Phiên bản
 - **Mục tiêu**: Xây dựng pipeline tải lên PDF, kiểm duyệt an ninh tệp và lưu trữ bất biến.
-- **Công việc**: Kiểm tra Magic Bytes `%PDF-`, quét AST bóc tách `/JS`, lưu tệp theo UUID, tính SHA-256.
-- **Đầu ra**: Bảng `documents` và `document_versions`, file được lưu an toàn trong MinIO.
-- **Security Gate**: Chặn 100% tệp giả mạo extension, chặn tệp chứa mã độc kích hoạt.
+- **Công việc**: Kiểm tra Magic Bytes `%PDF-`, quét object tree và từ chối nội dung chủ động trong subprocess có giới hạn, lưu nguyên bytes theo UUID, tính SHA-256 streaming.
+- **Đầu ra**: Bảng `documents` và `document_versions`, file được lưu an toàn trong local filesystem native; MinIO DEFERRED.
+- **Security Gate**: Kiểm tra nhiều lớp và chặn các cấu trúc chủ động trong bộ test; không tuyên bố phát hiện mọi mã độc. Xem `docs/phase2-report.md` về giới hạn parser.
 
 #### Phase 3: Quản lý Khóa Mật mã Phía Client (WebCrypto)
 - **Mục tiêu**: Sinh cặp khóa RSA-PSS/ECDSA phía trình duyệt, sao lưu mã hóa và đăng ký PoP.

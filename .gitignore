@@ -34,3 +34,10 @@ data/storage/documents/*
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Isolated Phase 2 work areas and retained database backups
+data/tmp/
+data/db/backups/
+data/db/docsign-tests-*/
+data/p2-test-*/
+data/p2-benchmark-*/

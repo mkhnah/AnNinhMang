@@ -1,9 +1,20 @@
 import os
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.app.core.config import settings
+
+@event.listens_for(Engine, "connect")
+def sqlite_constraints(connection, _):
+    import sqlite3
+    if isinstance(connection, sqlite3.Connection):
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+
 
 # Ensure sqlite directory exists if using SQLite
 if settings.DATABASE_URL.startswith("sqlite"):
