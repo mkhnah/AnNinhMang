@@ -1245,3 +1245,16 @@ READY cho phát triển Phase 5 theo release gates tự động: 196 backend tes
 DB thật được backup SQLite online trước upgrade; row counts và checksum backup `docsign.db.bak_pre_phase4` giữ nguyên. Backup đã gitignore. Không reset DB, xóa evidence, commit/push hoặc triển khai Phase 5.
 
 Trước release production còn cần browser E2E/IndexedDB/worker thật, PDF phức tạp và memory/leak browser, runtime tương thích engine support, đánh giá PDF.js nhánh mới được bảo trì và React Router major (2 moderate advisories còn lại). Benchmark Node/native canvas hiện chỉ là PDF tổng hợp, không phải cam kết RAM trình duyệt. ECDSA/PAdES/blockchain tiếp tục hoãn; không có khẳng định “100% secure” hoặc production-ready.
+
+
+## Phase 5 security remediation — kiểm chứng 15/11/2026
+
+READY cho phát triển Phase 6 theo các gate tự động: 276 backend tests, 86 frontend tests, strict TypeScript, production build và Alembic check PASS. Không triển khai Phase 6 trong lần sửa này. Báo cáo chi tiết: [docs/phase5-report.md](docs/phase5-report.md).
+
+Đã chặn evidence DB không canonical/sai hash/binding; package strict; kiểm tra đúng SPKI/RSA3072/e65537; phân biệt crypto/integrity/registry/trust/revocation/time. UI dùng snapshot + generation + AbortController; hash comparison theo từng ký tự và copy riêng. Public middleware giới hạn body bytes/rate/concurrency trước multipart, verify chạy threadpool và giữ parser budgets. Native script tắt proxy headers để peer quota không bị client spoof.
+
+Report endpoint chuyển sang receipt_id ngẫu nhiên, TTL10 phút, bounded1024/process; export chỉ dùng server snapshot, internal receipt kiểm tra user/current ownership/CSRF. Report chưa được ký số; credential receipt được bỏ khỏi JSON export. Không cần migration bổ sung, không đổi trigger/signing Phase 4; DB counts và backup/PDF checksums giữ nguyên.
+
+Đã chứng minh TS/WebCrypto thực tế → backend lưu chữ ký → export → independent HTTP API và API không có DB dependency. Benchmark dùng multipart/parser/private SQLite thật 1/5/10/20MiB, 5 mẫu/size; phân biệt helper, TestClient E2E và browser/network chưa đo.
+
+Giới hạn trước production: browser E2E và tải dài hạn, shared state nếu multi-worker, request/proxy deadlines và dependency/runtime follow-up Phase 4. Có một full run quan sát 2 parser false rejection Phase 2; isolated/diagnostic/full worker nguyên bản rerun đạt với budget không đổi, nguyên nhân chưa xác định. Ghi nhận riêng, không che bằng việc nới security limits. ECDSA/CA/TSA/report signing tiếp tục hoãn.

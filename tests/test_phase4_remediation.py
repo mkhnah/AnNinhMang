@@ -186,7 +186,7 @@ def test_additive_migration_preserves_populated_evidence(client_p4, attempt, db_
     try:
         with sqlite3.connect(path) as target:
             target.execute('PRAGMA foreign_keys=OFF')
-            tables = [row[0] for row in source.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+            tables = [row[0] for row in target.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'")]
             # Auth fixtures include committed signature, used session, key, document and user.
             for table in tables:
                 rows = source.execute(f'SELECT * FROM "{table}"').fetchall()

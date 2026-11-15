@@ -133,3 +133,13 @@ DEBUG=false bash scripts/dev_start.sh
 - [Báo cáo Phase 2, API, kiểm thử, phục hồi và rủi ro](docs/phase2-report.md)
 - [Số đo benchmark thực tế](docs/phase2-benchmark.json)
 - Khi cần kiểm tra sau crash: dừng upload, chạy `DEBUG=false venv/bin/python scripts/reconcile_storage.py`. Script chỉ báo cáo, không xóa dữ liệu.
+
+### Phase 5 verification security
+
+Native startup uses `scripts/dev_start.sh` (Uvicorn binds `127.0.0.1` with `--no-proxy-headers`). For manual startup, retain `--no-proxy-headers`: the public limiter uses the actual peer address, not client-supplied forwarding headers. A trusted reverse-proxy deployment needs a separate reviewed forwarding policy.
+
+Verification limits are configurable via `.env`: `MAX_UPLOAD_BYTES` (default 20MiB), `VERIFY_MAX_PACKAGE_BYTES` (512KiB), `VERIFY_MAX_BODY_BYTES` (21MiB + 64KiB), `VERIFY_CONCURRENCY` (2 jobs including uploads), `VERIFY_RATE_PER_MINUTE` (60 per peer), `VERIFY_MAX_TRACKED_IPS` (1024). PDF parser budgets remain enabled. In-memory quotas apply to one process; use one native worker for this configuration.
+
+`POST /api/v1/verify/report` now accepts only `{"receipt_id":"<verification_receipt from the verification response>"}`. Client-supplied result/trust fields are rejected. Receipts last 10 minutes, are bounded to 1024 per process, and are lost on restart or eviction. Internal receipts require the original user and current document/version ownership; public receipts are possession-based capabilities. Do not log/share receipt IDs. Re-verify when a receipt is unavailable.
+
+Reports are application-generated snapshots, **not digitally signed or independently tamper-evident**. No CA/TSA validation or legal-identity assurance is provided. See [Phase 5 report](docs/phase5-report.md) for measured results and remaining browser/deployment limits.

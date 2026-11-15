@@ -9,6 +9,7 @@ import { Profile } from './pages/Profile';
 import { Documents, DocumentDetail } from './pages/Documents';
 import { KeyManagement } from './pages/Keys';
 import { AdminOverview } from './pages/AdminOverview';
+import { IndependentVerify } from './pages/Verify/IndependentVerify';
 import { Forbidden } from './pages/Forbidden';
 import { NotFound } from './pages/NotFound';
 
@@ -44,6 +45,9 @@ export const App: React.FC = () => {
                   </PublicOnlyRoute>
                 }
               />
+
+              {/* Public Independent Verification Route */}
+              <Route path="/verify" element={<IndependentVerify />} />
 
               {/* Protected User Routes */}
               <Route

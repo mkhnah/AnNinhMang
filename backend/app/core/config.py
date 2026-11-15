@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     LOCAL_STORAGE_PATH: str = "./data/storage/documents"
 
     MAX_UPLOAD_BYTES: int = Field(20 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    VERIFY_MAX_PACKAGE_BYTES: int = Field(512 * 1024, ge=1024, le=1024 * 1024)
+    VERIFY_MAX_BODY_BYTES: int = Field(21 * 1024 * 1024 + 65536, ge=65536, le=102 * 1024 * 1024)
+    VERIFY_CONCURRENCY: int = Field(2, ge=1, le=4)
+    VERIFY_RATE_PER_MINUTE: int = Field(60, ge=1, le=600)
+    VERIFY_MAX_TRACKED_IPS: int = Field(1024, ge=1, le=10000)
     PDF_TIMEOUT_SECONDS: float = Field(5.0, gt=0, le=30)
     PDF_CPU_SECONDS: int = Field(3, ge=1, le=10)
     PDF_MEMORY_MB: int = Field(256, ge=64, le=512)

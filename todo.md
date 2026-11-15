@@ -41,13 +41,13 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | **Phase 2** | Lưu trữ PDF Cục bộ & Quản lý Phiên bản | P0 - Core | 12 | 11/12 | Local hoàn thành; MinIO DEFERRED |
 | **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 12/12 | Hoàn thành |
 | **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 12/12 | Gates tự động đạt; ECDSA chỉ đánh giá, chưa triển khai |
-| **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 0/11 | Chưa bắt đầu |
+| **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 10/11 | Gates tự động đạt; ECDSA DEFERRED |
 | **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 8** | Bộ Kiểm thử An ninh Chuyên sâu (T-01 đến T-28) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 9** | Tính năng Nâng cao (PAdES / Blockchain) | P3 - Optional | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 10** | Benchmark, Tài liệu Kỹ thuật & Kịch bản Demo | P1 - Security | 11 | 0/11 | Chưa bắt đầu |
-| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **55/121 (45.5%)** | **Đang triển khai** |
+| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **66/121 (54.5%)** | **Đang triển khai** |
 
 ---
 
@@ -323,47 +323,36 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 ---
 
 ### GIAI ĐOẠN 5: ĐỘNG CƠ XÁC MINH ĐA CHIỀU (VERIFICATION ENGINE) (PHASE 5)
-*Mục tiêu: Xây dựng bộ xác thực độc lập, hiển thị kết quả 6 thành phần minh bạch, phân định rõ toán học và pháp lý.*
+*Mục tiêu: Xác minh independent/internal theo sáu chiều riêng, không gộp toán học với danh tính/pháp lý.*
 
-- [ ] **TASK-P5-01** `[Backend]` `[P0]` **Schema Kết Quả Xác Minh 6 Thành Phần (`app/schemas/verify.py`)**:
-  - `cryptographic_validity`: `VALID` | `INVALID`.
-  - `document_integrity`: `UNCHANGED` | `TAMPERED`.
-  - `key_ownership`: `VERIFIED_POP` | `UNVERIFIED`.
-  - `certificate_trust`: `SELF_REGISTERED` | `TRUSTED_CA`.
-  - `key_revocation_status`: `ACTIVE` | `REVOKED`.
-  - `timestamp_evidence`: `{ server_timestamp, verification_time }`.
-  - `warnings`: Danh sách cảnh báo chi tiết.
-  - *DoD*: Schema phản ánh trung thực bản chất an ninh, không dùng 1 nhãn đơn giản.
-- [ ] **TASK-P5-02** `[Backend]` `[P0]` **API `POST /api/v1/verify/upload` (Xác Minh Độc Lập File Rời)**:
-  - Cho phép tải lên cặp tệp: File PDF cần kiểm tra + File Manifest chữ ký detached (`manifest.json`).
-  - Tính lại SHA-256 của file PDF tải lên và so sánh với `document_sha256` trong manifest.
-  - Lấy Public Key theo `key_id` từ DB (hoặc public key đính kèm).
-  - Chuẩn hóa manifest theo JCS và chạy Verify chữ ký.
-  - *DoD*: Bất kỳ ai có file PDF và manifest đều kiểm tra được tính toàn vẹn mà không cần đăng nhập.
-- [ ] **TASK-P5-03** `[Backend]` `[P1]` **Thuật Toán Phân Loại Kết Quả Xác Minh**:
-  - File PDF bị sửa $\to$ Báo `TAMPERED` (Hash mismatch).
-  - Chữ ký bị sửa $\to$ Báo `INVALID` (Signature verification failed).
-  - Khóa bị thu hồi sau ngày ký $\to$ Báo `VALID` về mật mã nhưng `KEY_REVOKED` về trạng thái khóa kèm cảnh báo vàng.
-  - *DoD*: Phân loại chính xác 100% các tình huống kiểm thử.
-- [ ] **TASK-P5-04** `[Frontend]` `[P0]` **Trang Xác Minh Độc Lập (`frontend/src/pages/Verify/IndependentVerify.tsx`)**: Giao diện kéo thả file PDF và manifest, nút bấm "Kiểm tra Tính Toàn Vẹn".
-  - *DoD*: Thao tác kiểm tra độc lập trực quan, dễ sử dụng.
-- [ ] **TASK-P5-05** `[Frontend]` `[P0]` **Huy Hiệu Trạng Thái Trực Quan (Status Badges)**:
-  - Màu Xanh lá: `VALID` & `UNCHANGED`.
-  - Màu Đỏ rực: `TAMPERED` / `INVALID`.
-  - Màu Vàng: `KEY_REVOKED` / `SELF_REGISTERED`.
-  - *DoD*: Giao diện nổi bật, gây ấn tượng mạnh khi demo trực tiếp.
-- [ ] **TASK-P5-06** `[Backend]` `[P0]` **API `GET /api/v1/documents/{id}/versions/{vid}/verify`**: Xác minh tài liệu nội bộ trực tiếp từ thông tin đã lưu trong cơ sở dữ liệu và thư mục tệp cục bộ.
-  - *DoD*: Trả về kết quả xác minh tức thời của phiên bản tài liệu.
-- [ ] **TASK-P5-07** `[Backend]` `[P1]` **Chống Tấn Công Tráo Public Key**: Đối chiếu fingerprint của khóa gửi lên với fingerprint ghi nhận trong manifest; chặn việc lấy khóa người khác gán vào chữ ký.
-  - *DoD*: Đã kiểm chứng qua bài test `T-03`.
-- [ ] **TASK-P5-08** `[Frontend]` `[P0]` **Bảng So Sánh Mã Băm Từng Ký Tự**: Hiển thị song song `Expected Hash` và `Computed Hash`; bôi đỏ ký tự khác nhau nếu file bị sửa đổi.
-  - *DoD*: Giúp Hội đồng nhìn thấy ngay lập tức sự sai lệch khi tệp bị can thiệp 1 byte.
-- [ ] **TASK-P5-09** `[Backend]` `[P1]` **Xuất Biên Bản Xác Minh JSON**: Cho phép tải về tệp `verification-report.json` có dấu thời gian của máy chủ.
-  - *DoD*: Người dùng xuất được báo cáo kiểm tra độc lập.
-- [ ] **TASK-P5-10** `[Backend]` `[P1]` **Ghi Nhận Lịch Sử Xác Minh**: Thống kê số lần xác minh hợp lệ và thất bại để đưa lên Dashboard.
-  - *DoD*: Dữ liệu xác minh được phản ánh lên màn hình giám sát.
-- [ ] **TASK-P5-11** `[Crypto]` `[P1]` **Tương Thích Mật Mã RSA-PSS và ECDSA**: Động cơ tự động nhận diện thuật toán trong manifest để gọi hàm verify phù hợp.
-  - *DoD*: Xác minh chính xác cả 2 chuẩn mật mã.
+- [x] **TASK-P5-01 — Schema 6 chiều**: Crypto/integrity/PoP/trust/revocation/time; thêm evidence_consistency, warning_codes, key_registry_binding; declared_timestamp tách server_recorded_at UTC, TSA null.
+- [x] **TASK-P5-02 — Public independent API**: Anonymous PDF + package strict; middleware cap tổng bytes, 60 req/peer/min, 2 jobs, bounded IP state; sync worker threadpool, bounded package read và parser budgets. Cấu hình/multi-worker limitations trong README/report.
+- [x] **TASK-P5-03 — Classification**: PDF mismatch độc lập với RSA validity; missing/unreadable file UNKNOWN, missing key UNVERIFIABLE; revoked key có thể còn mathematical VALID; evidence lỗi không VERIFIED/PoP.
+- [x] **TASK-P5-04 — Independent UI**: Public route, explicit submit, immutable request snapshot/generation/AbortController; invalidate đổi PDF/package/text/mode/reset/unmount, không dùng response stale.
+- [x] **TASK-P5-05 — Result panel 6 chiều**: Nhãn/icon/explanation, UNKNOWN không mô tả thành CA/TSA/hash mismatch; không có tổng thể xanh cho INVALID/TAMPERED; không tuyên bố chống giả mạo tuyệt đối.
+- [x] **TASK-P5-06 — Internal verify**: Owner/document/version authorization; strict manifest + canonical bytes + stored hash + key/signer/profile binding + RSA verification + actual PDF hash. Không dựa vào SIGNED hoặc parser fallback.
+- [x] **TASK-P5-07 — Key substitution/profile**: Actual SPKI fingerprint, signed key ID/registry owner binding, RSA đúng 3072/e65537/MGF1-SHA256/salt32; không thay signed key_id để gán VERIFIED_POP.
+- [x] **TASK-P5-08 — Hash UI**: Highlight từng ký tự khác nhau, copy riêng expected/computed, accessible labels; giải thích digest diff không chỉ ra byte bị sửa trong PDF.
+- [x] **TASK-P5-09 — Report và package export**: Owner package export giữ canonical signed bytes. Report chỉ nhận receipt_id từ server snapshot (TTL 600s, max1024/process), current owner/CSRF cho internal, public capability cho anonymous; loại receipt credential khỏi JSON tải xuống; report chưa ký số.
+- [x] **TASK-P5-10 — Minimal verification history**: verification_events chỉ lưu mode, actor/version nullable, classifications, summary và created_at; không PDF/raw manifest/IP/receipt. Retention target30 ngày, opportunistic purge khi verify; nếu instance ngừng hoạt động thì dữ liệu cũ còn đến lần cleanup tiếp theo. Chưa xây dashboard/aggregate API Phase 7. Giữ schema a6, remediation không cần migration mới.
+- [ ] **TASK-P5-11 — ECDSA P-256**: DEFERRED; upstream signing/profile chưa triển khai, không thêm nhánh verify nửa vời. RSA profile đã kiểm chứng trong TASK-P5-07.
+
+**Remediation kiểm chứng 15/11/2026:** 276 backend tests, 86 frontend tests, strict tsc, production build và Alembic check PASS. READY cho phát triển Phase 6 theo gates tự động, không phải production release. DB thật counts/FK/integrity và captured PDF/backup checksums giữ nguyên; không stage/commit/push. Chi tiết [docs/phase5-report.md](docs/phase5-report.md).
+
+- [x] **FIX-P5-01** Internal evidence consistency, không loose-parser fallback.
+- [x] **FIX-P5-02** Stale-response prevention và report lifecycle.
+- [x] **FIX-P5-03** Early body/rate/concurrency controls, threadpool, cleanup.
+- [x] **FIX-P5-04** Strict package schema/encoding/profile qua API thật.
+- [x] **FIX-P5-05** DB key ID/fingerprint/owner binding và trust classification.
+- [x] **FIX-P5-06** Exact RSA-PSS-3072/e65537 profile.
+- [x] **FIX-P5-07** Missing evidence + UTC timestamp semantics.
+- [x] **FIX-P5-08** Receipt-based report, không tin client trust fields; không export bearer receipt.
+- [x] **TEST-P5-01** Real frontend TS/WebCrypto → Python persistence → package export → independent API; cùng API với DB dependency None không đọc DB gốc, không nâng PoP/CA/revocation trust.
+- [x] **TEST-P5-02** Snapshot/stale/abort/unmount/error/retry, hash diff/copy và report export UI tests.
+- [x] **TEST-P5-03** Body/chunked/early rate/job cap/health/timeout/cleanup và real multipart benchmark 1/5/10/20MiB, 5 mẫu/size, private SQLite.
+- [ ] **P5-FOLLOWUP-BROWSER** Browser E2E thật, scanned/complex PDF, heap/download và tải dài hạn; không dùng jsdom/Node thay bằng chứng browser.
+- [ ] **P5-FOLLOWUP-PARSER** Điều tra false rejection không ổn định đã quan sát ở 2 test Phase 2 trong một full run có frontend chạy đồng thời; rerun riêng/full đạt với budget giữ nguyên, chưa xác định nguyên nhân. Xem report; chưa khẳng định ổn định mọi tải.
+- [ ] **P5-FOLLOWUP-DEPLOYMENT** Shared receipt/rate store khi multi-worker; ingress/read deadlines và trusted proxy policy nếu triển khai ngoài native loopback. Dependency/runtime follow-up Phase 4 giữ nguyên.
 
 ---
 

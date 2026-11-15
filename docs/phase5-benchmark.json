@@ -1,0 +1,292 @@
+{
+  "timestamp": "2026-11-15T04:28:43.740335+00:00",
+  "runtime": "Python 3.13.9 Darwin arm64",
+  "scope": "FastAPI TestClient multipart E2E; real bounded parser subprocess, SHA/JCS/RSA, private SQLite event commit and receipt issuance. No TCP/browser/TLS measurement.",
+  "limitations": "Five serial samples per size, synthetic blank-page PDFs; sampled tree RSS can miss peaks between 5ms samples; child-process sum can count shared pages. ru_maxrss is macOS bytes, process lifetime peak includes setup. Not complex/scanned/malicious PDF or browser memory evidence.",
+  "results": [
+    {
+      "target_mib": 1,
+      "actual_pdf_bytes": 1048502,
+      "package_bytes": 1778,
+      "samples_per_size": 5,
+      "metrics": {
+        "body_guard_in_memory_ms": {
+          "samples": 5,
+          "mean_ms": 0.229,
+          "median_ms": 0.148,
+          "min_ms": 0.14,
+          "max_ms": 0.538
+        },
+        "pdf_parser_ms": {
+          "samples": 5,
+          "mean_ms": 75.826,
+          "median_ms": 76.292,
+          "min_ms": 73.056,
+          "max_ms": 77.345
+        },
+        "sha256_ms": {
+          "samples": 5,
+          "mean_ms": 0.528,
+          "median_ms": 0.525,
+          "min_ms": 0.496,
+          "max_ms": 0.573
+        },
+        "spki_profile_ms": {
+          "samples": 5,
+          "mean_ms": 0.37,
+          "median_ms": 0.062,
+          "min_ms": 0.059,
+          "max_ms": 1.603
+        },
+        "jcs_ms": {
+          "samples": 5,
+          "mean_ms": 0.066,
+          "median_ms": 0.064,
+          "min_ms": 0.06,
+          "max_ms": 0.082
+        },
+        "rsa_pss_verify_ms": {
+          "samples": 5,
+          "mean_ms": 0.111,
+          "median_ms": 0.101,
+          "min_ms": 0.097,
+          "max_ms": 0.156
+        },
+        "event_flush_commit_ms": {
+          "samples": 5,
+          "mean_ms": 0.998,
+          "median_ms": 0.986,
+          "min_ms": 0.76,
+          "max_ms": 1.289
+        },
+        "multipart_api_total_ms": {
+          "samples": 5,
+          "mean_ms": 88.816,
+          "median_ms": 84.368,
+          "min_ms": 80.597,
+          "max_ms": 111.403
+        }
+      },
+      "parent_cpu_seconds": 0.0761,
+      "parser_child_cpu_seconds": 0.3464,
+      "parent_rss_baseline_mib": 159.67,
+      "sampled_parent_peak_rss_mib": 159.67,
+      "sampled_process_tree_peak_rss_mib": 159.67,
+      "memory_sampling_interval_ms": 5,
+      "process_lifetime_peak_rss_mib": 166.98
+    },
+    {
+      "target_mib": 5,
+      "actual_pdf_bytes": 5242806,
+      "package_bytes": 1778,
+      "samples_per_size": 5,
+      "metrics": {
+        "body_guard_in_memory_ms": {
+          "samples": 5,
+          "mean_ms": 0.264,
+          "median_ms": 0.238,
+          "min_ms": 0.215,
+          "max_ms": 0.388
+        },
+        "pdf_parser_ms": {
+          "samples": 5,
+          "mean_ms": 82.678,
+          "median_ms": 85.16,
+          "min_ms": 74.821,
+          "max_ms": 88.669
+        },
+        "sha256_ms": {
+          "samples": 5,
+          "mean_ms": 2.435,
+          "median_ms": 2.443,
+          "min_ms": 2.388,
+          "max_ms": 2.461
+        },
+        "spki_profile_ms": {
+          "samples": 5,
+          "mean_ms": 0.072,
+          "median_ms": 0.071,
+          "min_ms": 0.066,
+          "max_ms": 0.08
+        },
+        "jcs_ms": {
+          "samples": 5,
+          "mean_ms": 0.068,
+          "median_ms": 0.068,
+          "min_ms": 0.065,
+          "max_ms": 0.076
+        },
+        "rsa_pss_verify_ms": {
+          "samples": 5,
+          "mean_ms": 0.102,
+          "median_ms": 0.099,
+          "min_ms": 0.098,
+          "max_ms": 0.112
+        },
+        "event_flush_commit_ms": {
+          "samples": 5,
+          "mean_ms": 1.021,
+          "median_ms": 0.893,
+          "min_ms": 0.807,
+          "max_ms": 1.348
+        },
+        "multipart_api_total_ms": {
+          "samples": 5,
+          "mean_ms": 100.342,
+          "median_ms": 97.885,
+          "min_ms": 87.821,
+          "max_ms": 125.702
+        }
+      },
+      "parent_cpu_seconds": 0.0974,
+      "parser_child_cpu_seconds": 0.3563,
+      "parent_rss_baseline_mib": 170.12,
+      "sampled_parent_peak_rss_mib": 170.12,
+      "sampled_process_tree_peak_rss_mib": 170.12,
+      "memory_sampling_interval_ms": 5,
+      "process_lifetime_peak_rss_mib": 213.88
+    },
+    {
+      "target_mib": 10,
+      "actual_pdf_bytes": 10485688,
+      "package_bytes": 1778,
+      "samples_per_size": 5,
+      "metrics": {
+        "body_guard_in_memory_ms": {
+          "samples": 5,
+          "mean_ms": 0.373,
+          "median_ms": 0.343,
+          "min_ms": 0.322,
+          "max_ms": 0.504
+        },
+        "pdf_parser_ms": {
+          "samples": 5,
+          "mean_ms": 81.336,
+          "median_ms": 77.367,
+          "min_ms": 77.229,
+          "max_ms": 88.278
+        },
+        "sha256_ms": {
+          "samples": 5,
+          "mean_ms": 4.826,
+          "median_ms": 4.752,
+          "min_ms": 4.716,
+          "max_ms": 5.039
+        },
+        "spki_profile_ms": {
+          "samples": 5,
+          "mean_ms": 0.078,
+          "median_ms": 0.078,
+          "min_ms": 0.066,
+          "max_ms": 0.093
+        },
+        "jcs_ms": {
+          "samples": 5,
+          "mean_ms": 0.063,
+          "median_ms": 0.063,
+          "min_ms": 0.057,
+          "max_ms": 0.069
+        },
+        "rsa_pss_verify_ms": {
+          "samples": 5,
+          "mean_ms": 0.101,
+          "median_ms": 0.102,
+          "min_ms": 0.091,
+          "max_ms": 0.114
+        },
+        "event_flush_commit_ms": {
+          "samples": 5,
+          "mean_ms": 0.998,
+          "median_ms": 0.875,
+          "min_ms": 0.84,
+          "max_ms": 1.332
+        },
+        "multipart_api_total_ms": {
+          "samples": 5,
+          "mean_ms": 130.451,
+          "median_ms": 95.911,
+          "min_ms": 94.418,
+          "max_ms": 240.406
+        }
+      },
+      "parent_cpu_seconds": 0.1495,
+      "parser_child_cpu_seconds": 0.3622,
+      "parent_rss_baseline_mib": 180.73,
+      "sampled_parent_peak_rss_mib": 180.73,
+      "sampled_process_tree_peak_rss_mib": 180.73,
+      "memory_sampling_interval_ms": 5,
+      "process_lifetime_peak_rss_mib": 244.41
+    },
+    {
+      "target_mib": 20,
+      "actual_pdf_bytes": 20971448,
+      "package_bytes": 1778,
+      "samples_per_size": 5,
+      "metrics": {
+        "body_guard_in_memory_ms": {
+          "samples": 5,
+          "mean_ms": 0.549,
+          "median_ms": 0.511,
+          "min_ms": 0.503,
+          "max_ms": 0.687
+        },
+        "pdf_parser_ms": {
+          "samples": 5,
+          "mean_ms": 91.696,
+          "median_ms": 89.353,
+          "min_ms": 85.716,
+          "max_ms": 98.892
+        },
+        "sha256_ms": {
+          "samples": 5,
+          "mean_ms": 9.641,
+          "median_ms": 9.67,
+          "min_ms": 9.485,
+          "max_ms": 9.763
+        },
+        "spki_profile_ms": {
+          "samples": 5,
+          "mean_ms": 0.081,
+          "median_ms": 0.075,
+          "min_ms": 0.072,
+          "max_ms": 0.094
+        },
+        "jcs_ms": {
+          "samples": 5,
+          "mean_ms": 0.066,
+          "median_ms": 0.065,
+          "min_ms": 0.062,
+          "max_ms": 0.073
+        },
+        "rsa_pss_verify_ms": {
+          "samples": 5,
+          "mean_ms": 0.12,
+          "median_ms": 0.106,
+          "min_ms": 0.098,
+          "max_ms": 0.187
+        },
+        "event_flush_commit_ms": {
+          "samples": 5,
+          "mean_ms": 1.38,
+          "median_ms": 1.262,
+          "min_ms": 0.832,
+          "max_ms": 2.066
+        },
+        "multipart_api_total_ms": {
+          "samples": 5,
+          "mean_ms": 131.737,
+          "median_ms": 124.163,
+          "min_ms": 121.444,
+          "max_ms": 154.189
+        }
+      },
+      "parent_cpu_seconds": 0.1733,
+      "parser_child_cpu_seconds": 0.3931,
+      "parent_rss_baseline_mib": 200.19,
+      "sampled_parent_peak_rss_mib": 200.19,
+      "sampled_process_tree_peak_rss_mib": 200.19,
+      "memory_sampling_interval_ms": 5,
+      "process_lifetime_peak_rss_mib": 324.09
+    }
+  ]
+}

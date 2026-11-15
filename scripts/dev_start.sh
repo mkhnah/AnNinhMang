@@ -41,7 +41,7 @@ trap cleanup SIGINT SIGTERM
 
 # 3. Start Backend in background
 echo "⚡ Starting FastAPI Backend on http://localhost:8000 ..."
-uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload &
+uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers --reload &
 BACKEND_PID=$!
 
 # 4. Start Frontend

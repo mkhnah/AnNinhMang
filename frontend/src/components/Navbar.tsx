@@ -68,6 +68,20 @@ export const Navbar: React.FC = () => {
                 </Link>
 
                 <Link
+                  to="/verify"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/verify')
+                      ? 'bg-sky-50 text-sky-700'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Xác minh
+                  </span>
+                </Link>
+
+                <Link
                   to="/profile"
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive('/profile')
@@ -130,6 +144,19 @@ export const Navbar: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                <Link
+                  to="/verify"
+                  className={`text-sm font-medium px-3 py-2 rounded-md transition-colors ${
+                    isActive('/verify')
+                      ? 'bg-sky-50 text-sky-700 font-semibold'
+                      : 'text-slate-700 hover:text-sky-600'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Xác minh độc lập
+                  </span>
+                </Link>
                 <Link
                   to="/login"
                   className="text-sm font-medium text-slate-700 hover:text-sky-600 px-3 py-2 rounded-md transition-colors"

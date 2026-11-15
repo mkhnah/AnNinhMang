@@ -15,7 +15,12 @@ from backend.app.schemas.signature import (
     SignatureSubmitRequest,
     SignatureResponse,
 )
+from backend.app.schemas.verify import (
+    VerificationResultResponse,
+    SignaturePackage,
+)
 from backend.app.services.signature_service import SignatureService
+from backend.app.services.verification_service import VerificationService
 from backend.app.storage.local import LocalStorageService
 
 class StrictJSONRoute(APIRoute):
@@ -96,6 +101,48 @@ def get_version_signature(
     db: Session = Depends(get_db),
 ):
     return SignatureService.get_signature_for_version(
+        db=db,
+        user_id=current_user.id,
+        document_id=str(document_id),
+        version_id=str(version_id),
+    )
+
+
+@router.get(
+    "/documents/{document_id}/versions/{version_id}/verify",
+    response_model=VerificationResultResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Multi-dimensional internal verification of a stored document version"
+)
+def verify_document_version_internal(
+    document_id: UUID,
+    version_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    storage: LocalStorageService = Depends(get_storage),
+):
+    return VerificationService.verify_internal(
+        db=db,
+        user_id=current_user.id,
+        document_id=str(document_id),
+        version_id=str(version_id),
+        storage=storage,
+    )
+
+
+@router.get(
+    "/documents/{document_id}/versions/{version_id}/signature-package",
+    response_model=SignaturePackage,
+    status_code=status.HTTP_200_OK,
+    summary="Export detached signature package for independent third-party verification"
+)
+def export_document_signature_package(
+    document_id: UUID,
+    version_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return VerificationService.export_signature_package(
         db=db,
         user_id=current_user.id,
         document_id=str(document_id),

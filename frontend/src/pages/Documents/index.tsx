@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FileText, UploadCloud, Download, Copy, Check, Lock, ArrowLeft, ShieldCheck, PenTool, Eye } from 'lucide-react';
 import { documentsApi, Document, Version } from '../../api/documents';
+import { verifyApi } from '../../api/verify';
 import { SignModal } from './SignModal';
 import { SignatureDetailsModal } from './SignatureDetailsModal';
+import { VerifyModal } from './VerifyModal';
 import './documents.css';
 
 export async function errorMessage(error: unknown): Promise<string> {
@@ -79,6 +81,7 @@ export function DocumentDetail() {
   const [hasMore, setHasMore] = useState(false);
   const [signingVersion, setSigningVersion] = useState<Version | null>(null);
   const [inspectingVersion, setInspectingVersion] = useState<Version | null>(null);
+  const [verifyingVersion, setVerifyingVersion] = useState<Version | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -95,6 +98,25 @@ export function DocumentDetail() {
       else { await documentsApi.ready(id, version.id); await load(); }
     } catch (e) { setError(kind === 'copy' ? 'Không thể sao chép. Hãy chọn và sao chép mã băm bên dưới.' : await errorMessage(e)); }
     finally { setBusy(''); }
+  };
+  const handleDownloadPackage = async (version: Version) => {
+    setBusy(version.id); setError('');
+    try {
+      const pkg = await verifyApi.exportSignaturePackage(id, version.id);
+      const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature-package-${doc?.title || 'document'}-v${version.version_no}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(await errorMessage(e));
+    } finally {
+      setBusy('');
+    }
   };
   const more = async () => {
     try { const next = await documentsApi.versions(id, versions.length); setVersions([...versions, ...next]); setHasMore(next.length === 100); }
@@ -114,7 +136,13 @@ export function DocumentDetail() {
             <button disabled={busy === version.id} onClick={() => void action(version, 'download')}><Download size={16} /> Tải PDF</button>
             {version.state === 'DRAFT' && <button disabled={busy === version.id} onClick={() => void action(version, 'ready')}><Lock size={16} /> Khóa để chuẩn bị ký</button>}
             {version.state === 'READY_TO_SIGN' && <button className="font-semibold text-emerald-700 hover:text-emerald-800" disabled={busy === version.id} onClick={() => setSigningVersion(version)}><PenTool size={16} /> Ký số (Sign)</button>}
-            {version.state === 'SIGNED' && <button className="font-semibold text-sky-700 hover:text-sky-800" disabled={busy === version.id} onClick={() => setInspectingVersion(version)}><Eye size={16} /> Chi tiết chữ ký</button>}
+            {version.state === 'SIGNED' && (
+              <>
+                <button className="font-semibold text-sky-700 hover:text-sky-800" disabled={busy === version.id} onClick={() => setInspectingVersion(version)}><Eye size={16} /> Chi tiết chữ ký</button>
+                <button className="font-semibold text-emerald-700 hover:text-emerald-800" disabled={busy === version.id} onClick={() => setVerifyingVersion(version)}><ShieldCheck size={16} /> Xác minh</button>
+                <button className="font-semibold text-slate-700 hover:text-slate-800" disabled={busy === version.id} onClick={() => void handleDownloadPackage(version)}><Download size={16} /> Gói chữ ký</button>
+              </>
+            )}
           </div>
         </li>)}</ol>{hasMore && <button className="document-more" onClick={() => void more()}>Xem phiên bản cũ hơn</button>}
       </section>
@@ -143,6 +171,17 @@ export function DocumentDetail() {
           versionNo={inspectingVersion.version_no}
           documentTitle={doc.title}
           onClose={() => setInspectingVersion(null)}
+        />
+      )}
+
+      {/* Verification Modal */}
+      {verifyingVersion && (
+        <VerifyModal
+          documentId={id}
+          versionId={verifyingVersion.id}
+          versionNo={verifyingVersion.version_no}
+          documentTitle={doc.title}
+          onClose={() => setVerifyingVersion(null)}
         />
       )}
     </>}
