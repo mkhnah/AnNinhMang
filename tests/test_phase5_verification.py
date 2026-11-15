@@ -67,21 +67,8 @@ def sign_pop_py(private_key, payload_dict: dict) -> str:
     return base64.b64encode(sig_raw).decode("utf-8")
 
 
-# --- Test Fixtures ---
-
-@pytest.fixture
-def storage_p5():
-    with tempfile.TemporaryDirectory(prefix="p5-test-storage-", dir="data") as root:
-        yield LocalStorageService(Path(root).resolve())
-
-
-@pytest.fixture
-def client_p5(client, storage_p5):
-    app.dependency_overrides[get_storage] = lambda: storage_p5
-    # Reset in-memory rate limiter between tests
-    _ip_request_history.clear()
-    yield client
-    app.dependency_overrides.pop(get_storage, None)
+# --- Test Helpers & Re-exported Fixtures ---
+from tests.conftest import client_p5, storage_p5
 
 
 def register_and_login_user(client: TestClient, email: str = "verifier@cyber.edu"):

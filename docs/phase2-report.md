@@ -248,3 +248,8 @@ RSS lấy mẫu 2ms, chỉ theo dõi PID worker được tạo bởi pipeline; C
 - `requirements.txt`
 - `tests/conftest.py`
 - `todo.md`
+
+
+## Ghi chú cấu hình hiện tại sau Phase 6 final remediation (15/11/2026)
+
+Các số đo Phase 2 phía trên dùng cấu hình lịch sử 5s wall / 3s CPU. Baseline Phase 6 do người dùng sửa trước đợt final đang dùng 10s wall / 6s CPU; đợt final giữ nguyên các giá trị đó, không tăng để vượt tests. Tối đa 2 parser/process; RSS mỗi parser 256MiB, CPU hard limit7s, worker alarm7s và parent wall cap10s. Đây là bounds, không phải bảo đảm RSS tổng toàn app ≤512MiB. Giới hạn này cho phép giữ tài nguyên lâu hơn cấu hình Phase 2; cần đánh giá tải trước deployment. Việc giữ baseline không chứng minh đã sửa nguyên nhân false rejection. Xem docs/phase6-report.md về SIGXCPU, instrumentation và kết quả retry.

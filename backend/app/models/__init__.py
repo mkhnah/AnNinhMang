@@ -5,6 +5,7 @@ from backend.app.models.document import Document, DocumentVersion, VersionState,
 from backend.app.models.key import PublicKey, SigningChallenge
 from backend.app.models.signature import Signature, SigningSession
 from backend.app.models.verification import VerificationEvent
+from backend.app.models.share import ShareToken
 
 __all__ = [
     "UserRole", "UserStatus", "KeyStatus",
@@ -12,5 +13,5 @@ __all__ = [
     "Document", "DocumentVersion", "VersionState", "Visibility",
     "PublicKey", "SigningChallenge",
     "Signature", "SigningSession",
-    "VerificationEvent"
+    "VerificationEvent", "ShareToken"
 ]

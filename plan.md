@@ -1258,3 +1258,33 @@ Report endpoint chuyển sang receipt_id ngẫu nhiên, TTL10 phút, bounded1024
 Đã chứng minh TS/WebCrypto thực tế → backend lưu chữ ký → export → independent HTTP API và API không có DB dependency. Benchmark dùng multipart/parser/private SQLite thật 1/5/10/20MiB, 5 mẫu/size; phân biệt helper, TestClient E2E và browser/network chưa đo.
 
 Giới hạn trước production: browser E2E và tải dài hạn, shared state nếu multi-worker, request/proxy deadlines và dependency/runtime follow-up Phase 4. Có một full run quan sát 2 parser false rejection Phase 2; isolated/diagnostic/full worker nguyên bản rerun đạt với budget không đổi, nguyên nhân chưa xác định. Ghi nhận riêng, không che bằng việc nới security limits. ECDSA/CA/TSA/report signing tiếp tục hoãn.
+
+
+## Phase 6 security remediation & QR sharing release audit — kiểm chứng 15/11/2026
+
+**Trạng thái**: **READY CHO PHÁT TRIỂN GIAI ĐOẠN TIẾP THEO (PHASE 7)** theo tất cả release gates tự động. Báo cáo chi tiết: [docs/phase6-report.md](docs/phase6-report.md). Hướng dẫn demo di động: [docs/phase6-mobile-demo.md](docs/phase6-mobile-demo.md). Kết quả đo lường: [docs/phase6-benchmark.json](docs/phase6-benchmark.json).
+
+Đã khắc phục toàn bộ 4 lỗi P1 và các yêu cầu Hardening P2:
+1. **FIX-P6-01**: Tích hợp Verification Gate vào `create_share`, chạy qua toàn bộ pipeline xác minh SHA-256 PDF, RSA-PSS 3072-bit, PoP ownership và key ACTIVE trước khi phát hành liên kết.
+2. **FIX-P6-02**: Ngăn chặn race condition khi Concurrent Revoke và loại bỏ stale ORM identity map cache bằng truy vấn trực tiếp scalar columns trước khi trả kết quả xác minh.
+3. **FIX-P6-03**: Trang xác minh QR công khai `PublicShare.tsx` tích hợp Request Generation Counter và `AbortController` chống stale A/B response race condition.
+4. **FIX-P6-04**: Giải quyết 100% lỗi pytest collection failure bằng cách loại bỏ `pytest_plugins` trong non-top-level conftest và chuẩn hóa fixtures dùng chung tại `tests/conftest.py`.
+5. **FIX-P6-05**: Bổ sung HTTP Security Headers nghiêm ngặt (`Cache-Control: no-store, no-cache`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`) cho toàn bộ public endpoints và thẻ `<meta name="referrer" content="no-referrer">` trong HTML.
+6. **FIX-P6-06**: Hoàn thiện UI Share Management lọc theo từng tài liệu, phân trang, tùy chọn hạn sử dụng (1/7/14/30 ngày), modal xác nhận thu hồi, và cơ chế fallback sao chép thủ công.
+7. **FIX-P6-07**: Chuẩn hóa xác thực token 43 ký tự Base64URL, bộ kiểm tra cấu hình `PUBLIC_APP_BASE_URL`, cách ly DTO công khai và tắt cấp phát receipt không sử dụng.
+8. **FIX-P6-08**: Bộ kiểm thử tự động toàn diện: **307/307 backend tests PASS**, **99/99 frontend tests PASS** (11 test suites), TypeScript strict: **PASS**, Vite production build: **PASS**, Alembic check: **PASS**. Chứng minh chuỗi WebCrypto thật → Share → Public Verification thành công.
+
+Giới hạn trước production: Camera scan thực tế trên điện thoại yêu cầu bật chế độ `LAN_DEMO` theo hướng dẫn trong `phase6-mobile-demo.md`. Tự động hóa camera di động E2E hiện tại thuộc diện kiểm chứng thủ công; các phân hệ Phase 7 tiếp tục được phát triển theo đúng kế hoạch.
+
+
+### Phase 6 — Final security remediation, 15/11/2026
+
+Share issuance dùng Phase5 evidence gate trước writer lock, rồi BEGIN IMMEDIATE + conditional INSERT SELECT để serialize final owner/version/signature/key ACTIVE/revoked_at NULL với revoke. Không dùng SQLite FOR UPDATE hoặc ORM cache làm final gate. PublicShare mapping đầy đủ UNKNOWN/UNVERIFIABLE, SharesPanel paging20/offset/dedup/retry/revoke và document isolation. Real WebCrypto integration kết thúc bằng revoke/invalidation.
+
+Parser -24 cũ được xác nhận là SIGXCPU, chưa xác định nguyên nhân sự kiện false rejection. Có numeric/stage/resource diagnostics, CPU-runaway security test và bounded full reruns; không tuyên bố stability solved. Giữ baseline wall10s/CPU6s/RSS256MiB/max2, không tăng để vượt tests; nguồn cấu hình và report đã đồng bộ.
+
+Public demo app là entry point riêng chỉ cho built page/assets/public QR API; LOCAL_DEMO mặc định loopback, LAN_DEMO do người dùng bật rõ ràng. Signer/private API giữ localhost; không chạy LAN hoặc chọn PDF thật trong remediation. Browser/camera/PDF thật NOT TESTED.
+
+Kết quả release và residual risk: [docs/phase6-report.md](docs/phase6-report.md). Benchmark có raw samples và giới hạn TestClient, không suy camera/network latency hoặc no-leak từ RSS delta. Không triển khai Phase7 hoặc commit/push.
+
+Release cuối final remediation: 319 backend tests/115 frontend tests, strict tsc/build/Alembic/data preservation PASS; READY cho phát triển Phase7 theo gates tự động. Căn nguyên SIGXCPU cũ chưa xác định, không tuyên bố parser stability solved. Browser/camera/PDF thật NOT TESTED; task camera/mobile giữ mở trong todo.

@@ -12,6 +12,7 @@ import { AdminOverview } from './pages/AdminOverview';
 import { IndependentVerify } from './pages/Verify/IndependentVerify';
 import { Forbidden } from './pages/Forbidden';
 import { NotFound } from './pages/NotFound';
+import { PublicShare } from './pages/Verify/PublicShare';
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -48,6 +49,7 @@ export const App: React.FC = () => {
 
               {/* Public Independent Verification Route */}
               <Route path="/verify" element={<IndependentVerify />} />
+              <Route path="/verify/share/:token" element={<PublicShare />} />
 
               {/* Protected User Routes */}
               <Route

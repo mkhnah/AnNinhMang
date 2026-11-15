@@ -66,13 +66,14 @@ def main():
             "signatures",
             "signing_sessions",
             "verification_events",
+            "share_tokens",
             "alembic_version",
         }
         missing_tables = expected_tables - tables
         db_tables_ok = len(missing_tables) == 0
         all_passed = all_passed and db_tables_ok
         print_step(
-            "Phase 1-5",
+            "Phase 1-6",
             "Cấu trúc bảng DB đầy đủ",
             db_tables_ok,
             f"{len(tables)}/{len(expected_tables)} bảng" if db_tables_ok else f"Thiếu: {missing_tables}",
@@ -80,7 +81,7 @@ def main():
 
         with engine.connect() as conn:
             alembic_rev = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            rev_ok = alembic_rev in ["a4f000000004", "a5f000000005", "a6f000000006"]
+            rev_ok = alembic_rev in ["a4f000000004", "a5f000000005", "a6f000000006", "a7f000000007"]
             print_step("Alembic", "Migration Version ở Head", rev_ok, f"Current: {alembic_rev}")
 
             # Trigger check
@@ -90,12 +91,12 @@ def main():
                     text("SELECT name FROM sqlite_master WHERE type='trigger'")
                 ).fetchall()
             ]
-            trigger_ok = "version_immutable" in triggers
+            trigger_ok = "version_immutable" in triggers and "share_token_immutable" in triggers
             print_step(
                 "Trigger",
-                "SQLite Immutability Trigger",
+                "SQLite Immutability Triggers",
                 trigger_ok,
-                "version_immutable (Ngăn sửa đổi dữ liệu)",
+                "version_immutable & share_token_immutable",
             )
     else:
         all_passed = False
@@ -185,7 +186,7 @@ def main():
     print_header("4. Kiểm thử Tự động Hồi quy (Pytest & Vitest)")
 
     # 4.1 Pytest Backend
-    print("⏳ Đang chạy kiểm thử Backend Pytest (Phase 1 - Phase 5)...")
+    print("⏳ Đang chạy kiểm thử Backend Pytest (Phase 1 - Phase 6)...")
     res_pytest = subprocess.run(
         [str(ROOT_DIR / "venv" / "bin" / "pytest"), "tests/", "-q"],
         cwd=str(ROOT_DIR),
@@ -194,27 +195,27 @@ def main():
     )
     pytest_ok = res_pytest.returncode == 0
     pytest_summary = res_pytest.stdout.strip().split("\n")[-1] if res_pytest.stdout else res_pytest.stderr
-    print_step("Backend", "Pytest Test Suite (226 tests)", pytest_ok, pytest_summary)
+    print_step("Backend", "Pytest Test Suite (307 tests)", pytest_ok, pytest_summary)
     all_passed = all_passed and pytest_ok
 
     # 4.2 Vitest Frontend
-    print("⏳ Đang chạy kiểm thử Frontend Vitest (Phase 3, 4 & 5)...")
+    print("⏳ Đang chạy kiểm thử Frontend Vitest (Phase 3, 4, 5 & 6)...")
     res_vitest = subprocess.run(
-        ["npm", "test", "--", "--run"],
-        cwd=str(ROOT_DIR / "frontend"),
+        ["npm", "test", "--prefix", "frontend", "--", "--run"],
+        cwd=str(ROOT_DIR),
         capture_output=True,
         text=True,
     )
     vitest_ok = res_vitest.returncode == 0
-    vitest_summary = "78 passed" if "78 passed" in res_vitest.stdout else ("Pass" if vitest_ok else "Fail")
-    print_step("Frontend", "Vitest Test Suite (78 tests)", vitest_ok, vitest_summary)
+    vitest_summary = "99 passed" if "99 passed" in res_vitest.stdout else ("Pass" if vitest_ok else "Fail")
+    print_step("Frontend", "Vitest Test Suite (99 tests)", vitest_ok, vitest_summary)
     all_passed = all_passed and vitest_ok
 
     # 4.3 TypeScript Build
     print("⏳ Đang kiểm tra TypeScript Production Build...")
     res_build = subprocess.run(
-        ["npm", "run", "build"],
-        cwd=str(ROOT_DIR / "frontend"),
+        ["npm", "run", "build", "--prefix", "frontend"],
+        cwd=str(ROOT_DIR),
         capture_output=True,
         text=True,
     )
@@ -227,12 +228,13 @@ def main():
     # -------------------------------------------------------------
     print_header("KẾT QUẢ TỔNG QUAN")
     if all_passed:
-        print("🎉 TẤT CẢ CÁC PHÂN HỆ TỪ PHASE 1 ĐẾN PHASE 5 ĐỀU ĐANG HOẠT ĐỘNG HOÀN HẢO!")
+        print("🎉 TẤT CẢ CÁC PHÂN HỆ TỪ PHASE 1 ĐẾN PHASE 6 ĐỀU ĐANG HOẠT ĐỘNG HOÀN HẢO!")
         print("   - Phase 1: Authentication, JWT, CSRF, RBAC Database Security -> OK")
         print("   - Phase 2: Secure PDF Storage, SHA-256 Hashing, Document Versioning -> OK")
         print("   - Phase 3: Client-Side Key Management, Proof-of-Possession, AES-GCM Backup -> OK")
         print("   - Phase 4: Detached Manifest Signature Engine (RFC 8785 JCS, RSA-PSS 3072) -> OK")
         print("   - Phase 5: Independent Document Verification Engine & Cryptographic Trust Analysis -> OK")
+        print("   - Phase 6: Secure QR Sharing & Public Verification Hardening -> OK")
     else:
         print("⚠️ CÓ PHÂN HỆ CHƯA ĐẠT CHUẨN. Vui lòng kiểm tra lại các mục báo lỗi phía trên.")
 

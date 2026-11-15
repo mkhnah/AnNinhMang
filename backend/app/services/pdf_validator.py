@@ -1,4 +1,6 @@
 import logging
+import json
+import signal
 import threading
 import os
 import subprocess
@@ -50,22 +52,49 @@ def _validate_pdf(stream: BinaryIO, filename: str, mime: str | None) -> int:
                                env={**os.environ, 'TMPDIR': str(REPOSITORY / 'data' / 'tmp')})
     ACTIVE_PARSER_PIDS.add(process.pid)
     monitor = psutil.Process(process.pid)
-    deadline = time.monotonic() + settings.PDF_TIMEOUT_SECONDS
+    started = time.monotonic()
+    deadline = started + settings.PDF_TIMEOUT_SECONDS
+    peak_rss = 0
+    cpu_seconds = 0.0
+    reason = "worker_exit"
     rejected = False
     try:
         while process.poll() is None:
             try:
-                over_memory = monitor.memory_info().rss > settings.PDF_MEMORY_MB * 1024 * 1024
+                rss = monitor.memory_info().rss
+                peak_rss = max(peak_rss, rss)
+                cpu = monitor.cpu_times()
+                cpu_seconds = cpu.user + cpu.system
+                over_memory = rss > settings.PDF_MEMORY_MB * 1024 * 1024
             except psutil.NoSuchProcess:
                 break
             if time.monotonic() > deadline or over_memory:
                 rejected = True
+                reason = "rss_limit" if over_memory else "wall_timeout"
                 process.kill()
                 break
             time.sleep(0.01)
         output, _ = process.communicate(timeout=1)
-        if rejected or process.returncode != 0 or output.strip() != b'{"ok": true}':
-            logger.warning('PDF rejected: malformed, active content, encrypted, or parser budget exceeded')
+        try:
+            result = json.loads(output) if len(output) <= 4096 else {}
+            ok = isinstance(result, dict) and set(result) <= {"ok", "diagnostics"} and result.get("ok") is True
+            diagnostics = result.get("diagnostics", {}) if isinstance(result, dict) else {}
+        except (ValueError, TypeError):
+            ok, diagnostics = False, {}
+        if rejected or process.returncode != 0 or not ok:
+            number = -process.returncode if process.returncode < 0 else None
+            # Explicitly copy safe numeric/enum diagnostics; never log raw output.
+            stage = diagnostics.get("stage") if isinstance(diagnostics, dict) else None
+            if stage not in {"bootstrap", "limits", "import", "spool", "parse", "traverse", "complete"}:
+                stage = "unknown"
+            worker_cpu = diagnostics.get("cpu_seconds") if isinstance(diagnostics, dict) else None
+            logger.warning("PDF rejected reason=%s signal=%s returncode=%s stage=%s "
+                           "cpu_sample_seconds=%.6f worker_cpu_seconds=%s wall_seconds=%.6f "
+                           "peak_rss_sample_bytes=%d input_bytes=%d cpu_budget=%d wall_budget=%.3f pid=%d",
+                           reason, signal.Signals(number).name if number else "none", process.returncode,
+                           stage, cpu_seconds, worker_cpu if isinstance(worker_cpu, (int, float)) else None,
+                           time.monotonic() - started, peak_rss, size, settings.PDF_CPU_SECONDS,
+                           settings.PDF_TIMEOUT_SECONDS, process.pid)
             raise HTTPException(400, 'PDF không hợp lệ, có nội dung chủ động hoặc vượt giới hạn xử lý')
     finally:
         if process.poll() is None:

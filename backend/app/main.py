@@ -1,5 +1,6 @@
 import time
 import tempfile
+import re
 from backend.app.storage.local import LocalStorageService, REPOSITORY
 from backend.app.core.upload_limit import UploadLimitMiddleware
 import logging
@@ -7,13 +8,33 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
-from backend.app.api.v1 import auth, admin, documents, keys, signatures, verify
+from backend.app.api.v1 import auth, admin, documents, keys, signatures, verify, shares
 
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("docsign.app")
+
+
+class SensitivePathFilter(logging.Filter):
+    _share_path = re.compile(r"(/api/v1/verify/share/)[A-Za-z0-9_-]{43}")
+
+    @classmethod
+    def _redact(cls, value):
+        return cls._share_path.sub(r"\1<redacted>", value) if isinstance(value, str) else value
+
+    def filter(self, record):
+        record.msg = self._redact(record.msg)
+        if record.args:
+            if isinstance(record.args, tuple):
+                record.args = tuple(self._redact(value) for value in record.args)
+            elif isinstance(record.args, dict):
+                record.args = {key: self._redact(value) for key, value in record.args.items()}
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(SensitivePathFilter())
 
 # Multipart spool files stay in the repository, including uploads over 1MB.
 tempfile.tempdir = str(LocalStorageService(REPOSITORY / "data" / "tmp").root)
@@ -49,8 +70,16 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+
+    # FIX-P6-05: Ensure public share verification routes enforce no-store and no-referrer
+    if request.url.path.startswith("/api/v1/verify/share"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Referrer-Policy"] = "no-referrer"
+    else:
+        if "Referrer-Policy" not in response.headers:
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     if settings.COOKIE_SECURE:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -65,6 +94,8 @@ app.include_router(documents.router, prefix="/api/v1")
 app.include_router(keys.router, prefix="/api/v1")
 app.include_router(signatures.router, prefix="/api/v1")
 app.include_router(verify.router, prefix="/api/v1")
+app.include_router(shares.router, prefix="/api/v1")
+app.include_router(shares.public_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])

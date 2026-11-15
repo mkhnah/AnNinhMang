@@ -22,8 +22,11 @@ class Settings(BaseSettings):
     VERIFY_CONCURRENCY: int = Field(2, ge=1, le=4)
     VERIFY_RATE_PER_MINUTE: int = Field(60, ge=1, le=600)
     VERIFY_MAX_TRACKED_IPS: int = Field(1024, ge=1, le=10000)
-    PDF_TIMEOUT_SECONDS: float = Field(5.0, gt=0, le=30)
-    PDF_CPU_SECONDS: int = Field(3, ge=1, le=10)
+    PUBLIC_APP_BASE_URL: str = "http://localhost:5173"
+    SHARE_DEFAULT_EXPIRY_DAYS: int = Field(7, ge=1, le=30)
+    SHARE_MAX_EXPIRY_DAYS: int = Field(30, ge=1, le=90)
+    PDF_TIMEOUT_SECONDS: float = Field(10.0, gt=0, le=30)
+    PDF_CPU_SECONDS: int = Field(6, ge=1, le=10)
     PDF_MEMORY_MB: int = Field(256, ge=64, le=512)
     PDF_MAX_OBJECTS: int = Field(50000, ge=100, le=100000)
     PDF_MAX_DEPTH: int = Field(64, ge=8, le=128)
@@ -44,6 +47,29 @@ class Settings(BaseSettings):
 
     # CORS Settings
     CORS_ORIGINS: str = "http://localhost:5173"
+
+    @field_validator("PUBLIC_APP_BASE_URL")
+    @classmethod
+    def validate_public_app_base_url(cls, v: str) -> str:
+        from urllib.parse import urlsplit
+        if not v or not isinstance(v, str):
+            raise ValueError("PUBLIC_APP_BASE_URL cannot be empty")
+        parsed = urlsplit(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"PUBLIC_APP_BASE_URL must have scheme http or https, got {parsed.scheme}")
+        if not parsed.netloc or not parsed.hostname:
+            raise ValueError("PUBLIC_APP_BASE_URL must contain a valid host")
+        if "@" in parsed.netloc:
+            raise ValueError("PUBLIC_APP_BASE_URL must not contain credentials")
+        if parsed.query:
+            raise ValueError("PUBLIC_APP_BASE_URL must not contain query parameters")
+        if parsed.fragment:
+            raise ValueError("PUBLIC_APP_BASE_URL must not contain a fragment")
+        if parsed.port is not None and not (1 <= parsed.port <= 65535):
+            raise ValueError(f"PUBLIC_APP_BASE_URL port {parsed.port} is out of valid range (1-65535)")
+        if ".." in parsed.path:
+            raise ValueError("PUBLIC_APP_BASE_URL path must not contain traversal elements")
+        return v.rstrip("/")
 
     # Brute-force & Account Protection
     MAX_LOGIN_ATTEMPTS: int = 5

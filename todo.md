@@ -42,12 +42,12 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 12/12 | Hoàn thành |
 | **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 12/12 | Gates tự động đạt; ECDSA chỉ đánh giá, chưa triển khai |
 | **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 10/11 | Gates tự động đạt; ECDSA DEFERRED |
-| **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 0/10 | Chưa bắt đầu |
+| **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 8/10 | Automated gates đạt; camera/browser/PDF thật NOT TESTED |
 | **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 8** | Bộ Kiểm thử An ninh Chuyên sâu (T-01 đến T-28) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 9** | Tính năng Nâng cao (PAdES / Blockchain) | P3 - Optional | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 10** | Benchmark, Tài liệu Kỹ thuật & Kịch bản Demo | P1 - Security | 11 | 0/11 | Chưa bắt đầu |
-| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **66/121 (54.5%)** | **Đang triển khai** |
+| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **76/121 (62.8%)** | **Đang triển khai** |
 
 ---
 
@@ -180,7 +180,7 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
   - Kiểm tra 5 bytes đầu tiên của file: Bắt buộc là `%PDF-` (`0x25 0x50 0x44 0x46 0x2D`).
   - *DoD*: Chặn đứng file thực thi `.exe`, file script `.php` đổi tên đuôi `.pdf`, trả về lỗi `415`.
 - [x] **TASK-P2-07** `[Backend]` `[P1]` **Quét Object Tree và Từ Chối Nội Dung Chủ Động**:
-  - Dùng `pypdf` trong subprocess: CPU 3 giây, wall time 5 giây, RSS 256MB, 50.000 lượt duyệt, sâu 64; tối đa 2 parser đồng thời mỗi process.
+  - Dùng `pypdf` trong subprocess: CPU 3 giây, wall time 5 giây, RSS 256MB, 50.000 lượt duyệt, sâu 64; tối đa 2 parser đồng thời mỗi process. Đây là budget Phase2 lịch sử; cấu hình baseline Phase6 hiện tại wall10s/CPU6s được giữ nguyên trong final remediation, không được coi là fix cho false rejection.
   - Phát hiện và từ chối các tệp chứa thẻ thực thi tự động: `/JavaScript`, `/JS`, `/Launch`, `/SubmitForm`.
   - *DoD*: Phát hiện và chặn tệp PDF độc hại, ghi cảnh báo an ninh.
 - [x] **TASK-P2-08** `[Backend]` `[P1]` **Khử Độc Tên Tệp & Đặt Tên Bằng UUID**: Loại bỏ ký tự Path Traversal (`../`), lưu tệp trên ổ cứng hoàn toàn bằng UUID ngẫu nhiên.
@@ -357,37 +357,33 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 ---
 
 ### GIAI ĐOẠN 6: CHIA SẺ AN TOÀN & XÁC THỰC CÔNG KHAI QUA QR (PHASE 6)
-*Mục tiêu: Tạo mã QR chứa token ngẫu nhiên bảo mật cao, xác thực thời gian hằng số và không làm lộ tệp PDF gốc.*
 
-- [ ] **TASK-P6-01** `[Backend]` `[P0]` **Thiết kế Model `ShareToken`**:
-  - Bảng `share_tokens`: `id (UUID PK)`, `version_id (FK)`, `token_hash (VARCHAR 64 UK)`, `expires_at`, `revoked_at`.
-  - *DoD*: Bảng được tạo trong database cục bộ, lưu hash SHA-256 của token.
-- [ ] **TASK-P6-02** `[Crypto]` `[P1]` **Sinh Token 256-bit Entropy An Toàn**:
-  - Sinh token ngẫu nhiên: `raw_token = secrets.token_urlsafe(32)`.
-  - Băm SHA-256 lưu vào DB: `token_hash = SHA256(raw_token)` (Không bao giờ lưu raw token vào DB).
-  - *DoD*: Dump cơ sở dữ liệu cũng không làm lộ raw token.
-- [ ] **TASK-P6-03** `[Backend]` `[P0]` **API `POST /api/v1/shares`**: Tạo liên kết chia sẻ cho phiên bản tài liệu đã ký, thời hạn mặc định 7 ngày.
-  - *DoD*: Trả về liên kết công khai `http://localhost:5173/verify/share/{raw_token}`.
-- [ ] **TASK-P6-04** `[Frontend]` `[P0]` **Tạo Mã QR Phía Trình Duyệt (`frontend/src/components/QRCodeModal.tsx`)**: Dùng thư viện `qrcode.react` tạo ảnh mã QR chứa đường dẫn xác minh, có nút tải ảnh QR PNG về máy.
-  - *DoD*: Dùng camera điện thoại quét mã QR mở ra đúng trang web xác minh.
-- [ ] **TASK-P6-05** `[Backend]` `[P1]` **So Sánh Thời Gian Hằng Số Chống Timing Attack**:
-  - Khi người dùng truy cập `/api/v1/verify/share/{token}`:
-  - Băm token nhận được và so sánh bằng hàm `hmac.compare_digest`.
-  - *DoD*: Đã kiểm chứng qua bài test `T-16`.
-- [ ] **TASK-P6-06** `[Backend]` `[P1]` **Bảo Vệ Tính Riêng Tư (Zero PDF Leakage)**:
-  - Trang xác minh qua QR **tuyệt đối không cung cấp nút tải hoặc đường dẫn tải file PDF gốc**.
-  - Chỉ hiển thị: Tên tài liệu, số phiên bản, kết quả toàn vẹn mật mã, fingerprint người ký, ngày ký.
-  - *DoD*: Khách quét mã xác minh được nguồn gốc văn bản nhưng không tải trộm được tệp tin riêng tư.
-- [ ] **TASK-P6-07** `[Backend]` `[P0]` **Xử Lý Token Quá Hạn & Thu Hồi**:
-  - Quá hạn: Trả về mã lỗi `410 Gone`.
-  - Đã thu hồi: Trả về mã lỗi `404 Not Found`.
-  - *DoD*: Đã kiểm chứng qua bài test `T-09` và `T-10`.
-- [ ] **TASK-P6-08** `[Frontend]` `[P0]` **Trang Xác Minh Mobile-Friendly (`frontend/src/pages/Verify/PublicQRVerify.tsx`)**: Giao diện tối ưu cho màn hình điện thoại di động, hiển thị tích xanh kiểm định toàn vẹn rõ ràng.
-  - *DoD*: Trình duyệt điện thoại quét QR hiển thị trang web mượt mà, đẹp mắt.
-- [ ] **TASK-P6-09** `[Backend]` `[P0]` **API `POST /api/v1/shares/{id}/revoke`**: Chủ sở hữu tài liệu có thể thu hồi mã QR bất kỳ lúc nào.
-  - *DoD*: Thu hồi xong, quét mã QR sẽ báo liên kết không còn tồn tại.
-- [ ] **TASK-P6-10** `[Frontend]` `[P0]` **Quản Lý Danh Sách Liên Kết Chia Sẻ**: Xem danh sách các mã QR đã phát hành và nút bấm thu hồi tức thì.
-  - *DoD*: Chủ tài liệu kiểm soát hoàn toàn việc chia sẻ.
+Phạm vi đã kiểm chứng tự động: token/hash, atomic issuance, public server assessment, expiry/revoke, privacy boundary, enum UI, paging. Chưa chứng minh demo điện thoại/PDF thật.
+
+- [x] **TASK-P6-01 — ShareToken model/migration**: additive a7f000000007, FK và immutable hash/un-revoke guard; không có migration mới trong final remediation.
+- [x] **TASK-P6-02 — Token generation/hash**: 32 bytes CSPRNG/Base64URL canonical, SHA-256 indexed storage; không lưu plaintext token, access-log redaction regression.
+- [x] **TASK-P6-03 — Create share**: Verification Engine + MATCHED/VERIFIED_POP; BEGIN IMMEDIATE và conditional INSERT SELECT kiểm tra owner/version/signature/key ACTIVE/revoked_at NULL tại issuance. Two-session interleaving và rollback tests.
+- [ ] **TASK-P6-04 — Real QR camera DoD**: qrcode.react/copy/manual fallback/PNG download đã có automated tests; camera scan thật **NOT TESTED**, chưa đóng DoD này.
+- [x] **TASK-P6-05 — Public token lookup**: hash indexed, rate/concurrency cap, security headers success/error, no-store/no-referrer/nosniff; không tuyên bố toàn API constant-time.
+- [x] **TASK-P6-06 — Public privacy boundary**: DTO riêng, không PDF/package/storage path/private identity; bearer share không thành quyền private API. Entry point demo chỉ mount public API/page/assets, auth/private routes404.
+- [x] **TASK-P6-07 — Expiry/revocation**: expiry410, revoked/unknown404; scalar recheck tránh ORM stale; concurrent revoke bằng hai Session + barrier; không phục hồi revoked token.
+- [ ] **TASK-P6-08 — Real mobile/browser DoD**: enum mapping, stale response, declared-time labels và source responsive đã có tests; browser E2E/320px thật **NOT TESTED**, chưa đóng DoD này.
+- [x] **TASK-P6-09 — Owner revoke API**: auth/CSRF/IDOR/ADMIN non-owner tests, idempotent revoke và public invalidation.
+- [x] **TASK-P6-10 — Share management**: filter document, expiry/label, confirmation, loading/error/retry, offset20/load-more/dedup, 21/50-record tests; revoke page2 giữ pages, đổi document bỏ response cũ; exact total chưa được API cung cấp nên UI ghi chưa xác định.
+
+**Final remediation 15/11/2026:**
+
+- [x] **FINAL-P6-01** Atomic issuance/revoke ordering, writer-lock test, rollback/no orphan.
+- [x] **FINAL-P6-02** VALID/INVALID/UNVERIFIABLE, UNCHANGED/TAMPERED/UNKNOWN, ACTIVE/REVOKED/UNKNOWN, evidence mapping; không false green khi dimensions mâu thuẫn summary.
+- [x] **FINAL-P6-03** Paging + retry/dedup/revoke/stale isolation; DocumentDetail remount theo document để không giữ modal/request context tài liệu cũ.
+- [x] **FINAL-P6-04-INVESTIGATION** Signal/resource/lifecycle investigation, controlled diagnostics, real CPU-budget termination test, parser/security/full reruns. **Không khẳng định căn nguyên SIGXCPU cũ đã được sửa.**
+- [ ] **P6-FOLLOWUP-PARSER-ROOT-CAUSE** Tiếp tục tìm căn nguyên false rejection -24 cũ khi có diagnostics mới. Không tự retry chấp nhận PDF lỗi, không nới budget để che failure.
+- [x] **FINAL-P6-05** Benchmark có raw samples, p95 nearest-rank, bounded concurrency/CPU/RSS metrics và scope TestClient chính xác; RSS delta không chứng minh no-leak.
+- [x] **FINAL-P6-06** Mobile guide: signer localhost; opt-in public-only LAN entry point, không expose private backend/Vite; cookie/CSRF/CORS/secure-context/firewall/Wi-Fi/HTTP troubleshooting.
+- [x] **P6-INTEROP** Real frontend TS/JCS/Node WebCrypto → PoP/signature persistence → share → anonymous public verify → owner revoke → anonymous404.
+- [ ] **P6-DEMO-REAL-PDF** Người dùng chọn và cho phép PDF không nhạy cảm, thực hiện demo thật; **NOT TESTED**.
+
+Kết quả release cuối: **319 backend tests**, **115 frontend tests**, strict TypeScript/build/Alembic PASS; preservation counts/checksums/FK/integrity PASS. Xem [docs/phase6-report.md](docs/phase6-report.md); raw benchmark [docs/phase6-benchmark.json](docs/phase6-benchmark.json); hướng dẫn [docs/phase6-mobile-demo.md](docs/phase6-mobile-demo.md). Automated integration PASS; browser/camera/PDF thật NOT TESTED. Không tự triển khai Phase7, không commit/push.
 
 ---
 

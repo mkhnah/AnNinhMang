@@ -69,3 +69,24 @@ def client(db_session) -> Generator[TestClient, None, None]:
     with TestClient(app, base_url="http://localhost:8000") as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+from backend.app.api.v1.documents import get_storage
+from backend.app.services.verification_service import _ip_request_history
+from backend.app.storage.local import LocalStorageService
+
+
+@pytest.fixture
+def storage_p5():
+    """Provides an isolated temporary LocalStorageService for verification tests."""
+    with tempfile.TemporaryDirectory(prefix="p5-test-storage-", dir="data") as root:
+        yield LocalStorageService(Path(root).resolve())
+
+
+@pytest.fixture
+def client_p5(client, storage_p5):
+    """TestClient configured with overridden get_storage dependency and cleared rate limiters."""
+    app.dependency_overrides[get_storage] = lambda: storage_p5
+    _ip_request_history.clear()
+    yield client
+    app.dependency_overrides.pop(get_storage, None)

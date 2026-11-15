@@ -211,7 +211,7 @@ class VerificationService:
         return manifest
 
     @staticmethod
-    def _finish(db, result, actor_id=None, document_id=None):
+    def _finish(db, result, actor_id=None, document_id=None, issue_receipt=True):
         if db is not None:
             try:
                 # Minimal events retained for 30 days; no manifest, PDF, IP or receipt token.
@@ -227,7 +227,9 @@ class VerificationService:
             except Exception:
                 db.rollback()
                 raise HTTPException(503, "Verification storage unavailable; retry verification")
-        return verification_receipts.issue(result, actor_id, document_id)
+        if issue_receipt:
+            return verification_receipts.issue(result, actor_id, document_id)
+        return result
 
     @classmethod
     def verify_internal(cls, db, user_id, document_id, version_id, storage):
@@ -257,6 +259,57 @@ class VerificationService:
             warnings=warnings, warning_codes=[w.split(":",1)[0] for w in warnings],
             evidence_consistency="CONSISTENT" if consistent else "INCONSISTENT")
         return cls._finish(db, result, user_id, document_id)
+
+    @classmethod
+    def verify_shared(cls, db, version, sig, storage):
+        """Verify retained evidence without reading or exposing the private PDF."""
+        key = db.scalar(select(PublicKey).where(PublicKey.id == sig.key_id))
+        try:
+            manifest = cls._consistent_manifest(version, sig, key, sig.signer_id).model_dump()
+            consistent = True
+        except (ValueError, TypeError, UnicodeError, RecursionError):
+            manifest = {}
+            consistent = False
+        computed = ""
+        pre_warnings = []
+        try:
+            with storage.get_file(version.storage_key) as stream:
+                computed = compute_stream_sha256(stream)
+        except (OSError, ValueError, FileNotFoundError):
+            pre_warnings.append("DOCUMENT_UNAVAILABLE: Stored PDF could not be read")
+        dims, warnings, fingerprint, key_id = cls._evaluate_six_dimensions(
+            db if consistent else None,
+            manifest,
+            sig.signature_b64 if consistent else "",
+            key.spki_pem if consistent and key else None,
+            computed,
+            VerificationMode.INDEPENDENT_DETACHED,
+            None,
+            key if consistent else None,
+        )
+        warnings = pre_warnings + warnings
+        if not consistent:
+            warnings.insert(0, "EVIDENCE_INCONSISTENT: Stored evidence failed strict validation")
+        result = VerificationResultResponse(
+            verification_id=str(uuid.uuid4()),
+            verification_mode=VerificationMode.INDEPENDENT_DETACHED,
+            summary_status=cls._determine_summary_status(dims),
+            results=dims,
+            document_version_id=None,
+            document_hash_expected=manifest.get("document_sha256", ""),
+            document_hash_computed=computed,
+            signer_fingerprint=fingerprint,
+            key_id=None,
+            signature_algorithm="RSA-PSS-3072",
+            signature_format="DETACHED_JCS_V1",
+            warnings=warnings,
+            warning_codes=[warning.split(":", 1)[0] for warning in warnings],
+            evidence_consistency="CONSISTENT" if consistent else "INCONSISTENT",
+        )
+        result = cls._finish(db, result, issue_receipt=False)
+        result.verification_receipt = None
+        result.receipt_expires_at = None
+        return result
 
     @classmethod
     def verify_independent_package(cls, db, pdf_stream, pdf_filename, package_json_str, client_ip=None):

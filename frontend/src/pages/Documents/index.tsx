@@ -1,9 +1,13 @@
+import { SharesPanel } from './SharesPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FileText, UploadCloud, Download, Copy, Check, Lock, ArrowLeft, ShieldCheck, PenTool, Eye } from 'lucide-react';
 import { documentsApi, Document, Version } from '../../api/documents';
 import { verifyApi } from '../../api/verify';
 import { SignModal } from './SignModal';
+import { QRCodeModal } from '../../components/QRCodeModal';
+import { CreateShareModal } from './CreateShareModal';
+import { ShareLink } from '../../api/shares';
 import { SignatureDetailsModal } from './SignatureDetailsModal';
 import { VerifyModal } from './VerifyModal';
 import './documents.css';
@@ -76,10 +80,18 @@ export function Documents() {
 
 export function DocumentDetail() {
   const { id = '' } = useParams();
+  return <DocumentDetailContent key={id} />;
+}
+
+function DocumentDetailContent() {
+  const { id = '' } = useParams();
   const [doc, setDoc] = useState<Document | null>(null), [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [copied, setCopied] = useState(''), [busy, setBusy] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [signingVersion, setSigningVersion] = useState<Version | null>(null);
+  const [creatingShareVersion, setCreatingShareVersion] = useState<Version | null>(null);
+  const [shareLink, setShareLink] = useState<ShareLink | null>(null);
+  const [shareRefresh, setShareRefresh] = useState(0);
   const [inspectingVersion, setInspectingVersion] = useState<Version | null>(null);
   const [verifyingVersion, setVerifyingVersion] = useState<Version | null>(null);
 
@@ -89,7 +101,9 @@ export function DocumentDetail() {
     catch (e) { setError(await errorMessage(e)); }
     finally { setLoading(false); }
   }, [id]);
+
   useEffect(() => { void load(); }, [load]);
+
   const action = async (version: Version, kind: 'download' | 'ready' | 'copy') => {
     setBusy(version.id); setError('');
     try {
@@ -140,6 +154,7 @@ export function DocumentDetail() {
               <>
                 <button className="font-semibold text-sky-700 hover:text-sky-800" disabled={busy === version.id} onClick={() => setInspectingVersion(version)}><Eye size={16} /> Chi tiết chữ ký</button>
                 <button className="font-semibold text-emerald-700 hover:text-emerald-800" disabled={busy === version.id} onClick={() => setVerifyingVersion(version)}><ShieldCheck size={16} /> Xác minh</button>
+                <button className="font-semibold text-violet-700 hover:text-violet-800" disabled={busy === version.id} onClick={() => setCreatingShareVersion(version)}><ShieldCheck size={16} /> QR chia sẻ</button>
                 <button className="font-semibold text-slate-700 hover:text-slate-800" disabled={busy === version.id} onClick={() => void handleDownloadPackage(version)}><Download size={16} /> Gói chữ ký</button>
               </>
             )}
@@ -184,6 +199,30 @@ export function DocumentDetail() {
           onClose={() => setVerifyingVersion(null)}
         />
       )}
+      {creatingShareVersion && (
+        <CreateShareModal
+          versionId={creatingShareVersion.id}
+          versionNo={creatingShareVersion.version_no}
+          documentTitle={doc.title}
+          onClose={() => setCreatingShareVersion(null)}
+          onSuccess={(created) => {
+            setCreatingShareVersion(null);
+            setShareLink(created);
+            setShareRefresh(value => value + 1);
+          }}
+        />
+      )}
+
+      {shareLink && (
+        <QRCodeModal
+          share={shareLink}
+          onClose={() => {
+            setShareLink(null);
+          }}
+        />
+      )}
+
+      <SharesPanel key={id} documentId={id} refresh={shareRefresh} />
     </>}
   </div>;
 }

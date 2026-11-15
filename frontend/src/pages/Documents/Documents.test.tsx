@@ -7,6 +7,7 @@ import { documentsApi } from '../../api/documents';
 
 const auth = vi.hoisted(() => ({ user: null as null | { role: string }, loading: false }));
 vi.mock('../../context/AuthContext', () => ({ useAuth: () => auth }));
+vi.mock('../../api/shares', () => ({ sharesApi: { list: vi.fn().mockResolvedValue([]), revoke: vi.fn() } }));
 vi.mock('../../api/documents', () => ({ documentsApi: { limits: vi.fn(), list: vi.fn(), detail: vi.fn(), versions: vi.fn(), upload: vi.fn(), download: vi.fn(), ready: vi.fn() } }));
 const doc = { id: 'abc', title: '<img src=x onerror=alert(1)>.pdf', visibility: 'PRIVATE', created_at: '2026-11-14T00:00:00Z', updated_at: '2026-11-14T00:00:00Z' };
 const version = { id: 'v1', document_id: 'abc', version_no: 1, original_filename: '<script>alert(1)</script>.pdf', file_sha256: 'a'.repeat(64), file_size_bytes: 1000, state: 'DRAFT' as const, created_at: doc.created_at, locked_at: null };
