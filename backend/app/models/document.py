@@ -49,15 +49,19 @@ class DocumentVersion(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     locked_at = Column(DateTime(timezone=True), nullable=True)
     document = relationship('Document', back_populates='versions')
+    signature = relationship('Signature', back_populates='version', uselist=False)
 
 
-# Also protect bulk/raw SQL updates. Phase 4 must explicitly migrate the SIGNED gate.
+# Also protect bulk/raw SQL updates. Phase 4 permits DRAFT -> READY_TO_SIGN, and READY_TO_SIGN -> SIGNED only if signature exists.
 IMMUTABILITY_SQL = """CREATE TRIGGER version_immutable BEFORE UPDATE ON document_versions
 WHEN NEW.id IS NOT OLD.id OR NEW.document_id IS NOT OLD.document_id
  OR NEW.version_no IS NOT OLD.version_no OR NEW.file_sha256 IS NOT OLD.file_sha256
  OR NEW.storage_key IS NOT OLD.storage_key OR NEW.file_size_bytes IS NOT OLD.file_size_bytes
  OR NEW.original_filename IS NOT OLD.original_filename OR NEW.created_at IS NOT OLD.created_at
- OR (OLD.state != NEW.state AND NOT (OLD.state = 'DRAFT' AND NEW.state = 'READY_TO_SIGN'))
+ OR (OLD.state != NEW.state AND NOT (
+     (OLD.state = 'DRAFT' AND NEW.state = 'READY_TO_SIGN')
+     OR (OLD.state = 'READY_TO_SIGN' AND NEW.state = 'SIGNED' AND EXISTS (SELECT 1 FROM signatures WHERE version_id = NEW.id))
+ ))
  OR (OLD.locked_at IS NOT NULL AND NEW.locked_at IS NOT OLD.locked_at)
 BEGIN SELECT RAISE(ABORT, 'Immutable version or invalid transition'); END"""
 event.listen(DocumentVersion.__table__, 'after_create', DDL(IMMUTABILITY_SQL).execute_if(dialect='sqlite'))

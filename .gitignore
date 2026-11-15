@@ -41,3 +41,8 @@ data/db/backups/
 data/db/docsign-tests-*/
 data/p2-test-*/
 data/p2-benchmark-*/
+
+# Database backups contain private account and signing data
+*.db.bak*
+*.sqlite.bak*
+*.sqlite3.bak*

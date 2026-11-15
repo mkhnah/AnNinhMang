@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-11-15T02:44:52.688570+00:00",
+  "results": [
+    {
+      "pdfjs": "4.10.38",
+      "node": "v20.12.0",
+      "fixture_bytes": 1048502,
+      "canvas_pixels": 160000,
+      "elapsed_ms": 61,
+      "rss_before_mb": 84.453125,
+      "rss_after_cleanup_mb": 103.421875,
+      "process_peak_rss_mb": 103.421875,
+      "scope": "Node legacy PDF.js + native canvas; one synthetic blank page, not browser heap/worker/GPU memory",
+      "target_mb": 1
+    },
+    {
+      "pdfjs": "4.10.38",
+      "node": "v20.12.0",
+      "fixture_bytes": 5242806,
+      "canvas_pixels": 160000,
+      "elapsed_ms": 64,
+      "rss_before_mb": 82.359375,
+      "rss_after_cleanup_mb": 112.578125,
+      "process_peak_rss_mb": 112.625,
+      "scope": "Node legacy PDF.js + native canvas; one synthetic blank page, not browser heap/worker/GPU memory",
+      "target_mb": 5
+    },
+    {
+      "pdfjs": "4.10.38",
+      "node": "v20.12.0",
+      "fixture_bytes": 10485688,
+      "canvas_pixels": 160000,
+      "elapsed_ms": 92,
+      "rss_before_mb": 83.984375,
+      "rss_after_cleanup_mb": 130.578125,
+      "process_peak_rss_mb": 130.578125,
+      "scope": "Node legacy PDF.js + native canvas; one synthetic blank page, not browser heap/worker/GPU memory",
+      "target_mb": 10
+    },
+    {
+      "pdfjs": "4.10.38",
+      "node": "v20.12.0",
+      "fixture_bytes": 20971448,
+      "canvas_pixels": 160000,
+      "elapsed_ms": 122,
+      "rss_before_mb": 82.515625,
+      "rss_after_cleanup_mb": 159.75,
+      "process_peak_rss_mb": 159.75,
+      "scope": "Node legacy PDF.js + native canvas; one synthetic blank page, not browser heap/worker/GPU memory",
+      "target_mb": 20
+    }
+  ],
+  "limitations": "Synthetic blank content; not scanned/complex/malicious PDFs, browser E2E or repeated browser heap leak proof. No claim of PDF Worker sandboxing."
+}

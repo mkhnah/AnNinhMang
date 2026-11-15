@@ -1,0 +1,57 @@
+[
+  {
+    "name": "manifest_v1_unordered",
+    "input": {
+      "signing_context": "DOCSIGN_DOCUMENT_SIGNATURE_V1",
+      "algorithm": "RSA-PSS-3072",
+      "signing_timestamp": "2026-11-15T00:00:00.000Z",
+      "manifest_version": 1,
+      "document_version_id": "7f8b86d6-0562-4318-9719-74d320295874",
+      "key_id": "19bfae79-5095-4682-8959-19ffcf6fa505",
+      "signing_nonce": "e_zL7Qc7t3uX6G9yD4vN8mK2pL5wR1tY0oP9aB3cV8s",
+      "signer_fingerprint": "8cf55227bf317c24f6050b1d3d63b92cbddf6a8e83b482bcf0ebca1c88820cfb",
+      "document_sha256": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a"
+    },
+    "expected_canonical": "{\"algorithm\":\"RSA-PSS-3072\",\"document_sha256\":\"4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a\",\"document_version_id\":\"7f8b86d6-0562-4318-9719-74d320295874\",\"key_id\":\"19bfae79-5095-4682-8959-19ffcf6fa505\",\"manifest_version\":1,\"signer_fingerprint\":\"8cf55227bf317c24f6050b1d3d63b92cbddf6a8e83b482bcf0ebca1c88820cfb\",\"signing_context\":\"DOCSIGN_DOCUMENT_SIGNATURE_V1\",\"signing_nonce\":\"e_zL7Qc7t3uX6G9yD4vN8mK2pL5wR1tY0oP9aB3cV8s\",\"signing_timestamp\":\"2026-11-15T00:00:00.000Z\"}"
+  },
+  {
+    "name": "unicode_multilingual",
+    "input": {
+      "vi": "Hệ thống Ký số và Xác thực Tài liệu Điện tử 🔒",
+      "ja": "電子署名と文書検証システム",
+      "de": "Digitale Dokumentensignatur und -überprüfung"
+    },
+    "expected_canonical": "{\"de\":\"Digitale Dokumentensignatur und -überprüfung\",\"ja\":\"電子署名と文書検証システム\",\"vi\":\"Hệ thống Ký số và Xác thực Tài liệu Điện tử 🔒\"}"
+  },
+  {
+    "name": "numbers_and_floats",
+    "input": {
+      "int_one": 1,
+      "float_one": 1.0,
+      "pi_approx": 3.14159,
+      "large_exp": 100000.0,
+      "zero": 0
+    },
+    "expected_canonical": "{\"float_one\":1,\"int_one\":1,\"large_exp\":100000,\"pi_approx\":3.14159,\"zero\":0}"
+  },
+  {
+    "name": "nested_structures_and_arrays",
+    "input": {
+      "z_array": [3, 1, 2],
+      "a_obj": {
+        "nested_b": "value",
+        "nested_a": true
+      },
+      "empty_obj": {},
+      "empty_arr": []
+    },
+    "expected_canonical": "{\"a_obj\":{\"nested_a\":true,\"nested_b\":\"value\"},\"empty_arr\":[],\"empty_obj\":{},\"z_array\":[3,1,2]}"
+  },
+  {
+    "name": "escaped_characters",
+    "input": {
+      "escapes": "Line1\nLine2\tTabbed \"Quoted\" \\Backslash\\ \r\b\f"
+    },
+    "expected_canonical": "{\"escapes\":\"Line1\\nLine2\\tTabbed \\\"Quoted\\\" \\\\Backslash\\\\ \\r\\b\\f\"}"
+  }
+]

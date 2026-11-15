@@ -46,11 +46,10 @@ def setup_test_database():
 @pytest.fixture
 def db_session() -> Generator:
     """Provides a transactional database session per test with clean tables."""
+    # Fresh schema in the private test database; retention triggers prohibit DELETE.
+    Base.metadata.drop_all(bind=test_engine)
+    Base.metadata.create_all(bind=test_engine)
     session = TestingSessionLocal()
-    # Private database only; real commits/rollbacks must behave as in production.
-    for table in reversed(Base.metadata.sorted_tables):
-        session.execute(table.delete())
-    session.commit()
     try:
         yield session
     finally:

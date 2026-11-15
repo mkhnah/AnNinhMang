@@ -16,6 +16,7 @@ email-validator>=2.1.1
 argon2-cffi>=23.1.0
 pyjwt[crypto]>=2.8.0
 cryptography>=42.0.5
+jcs>=0.3.0
 
 # Testing & Quality
 pytest>=8.1.1

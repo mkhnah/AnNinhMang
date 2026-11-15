@@ -40,14 +40,14 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | **Phase 1** | Xác thực, Quản lý User & Phân quyền RBAC | P1 - Security | 11 | 11/11 | Hoàn thành |
 | **Phase 2** | Lưu trữ PDF Cục bộ & Quản lý Phiên bản | P0 - Core | 12 | 11/12 | Local hoàn thành; MinIO DEFERRED |
 | **Phase 3** | Quản lý Khóa Mật mã Phía Client (WebCrypto) | P1 - Security | 12 | 12/12 | Hoàn thành |
-| **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 0/12 | Sẵn sàng bắt đầu |
+| **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 12/12 | Gates tự động đạt; ECDSA chỉ đánh giá, chưa triển khai |
 | **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 0/11 | Chưa bắt đầu |
 | **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 8** | Bộ Kiểm thử An ninh Chuyên sâu (T-01 đến T-28) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 9** | Tính năng Nâng cao (PAdES / Blockchain) | P3 - Optional | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 10** | Benchmark, Tài liệu Kỹ thuật & Kịch bản Demo | P1 - Security | 11 | 0/11 | Chưa bắt đầu |
-| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **44/121 (36.4%)** | **Đang triển khai** |
+| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **55/121 (45.5%)** | **Đang triển khai** |
 
 ---
 
@@ -256,47 +256,69 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 ### GIAI ĐOẠN 4: LÕI KÝ SỐ DETACHED MANIFEST (RFC 8785 JCS) (PHASE 4)
 *Mục tiêu: Chuẩn hóa dữ liệu ký qua RFC 8785 JCS, ký số client-side và backend verify trước khi ghi nhận.*
 
-- [ ] **TASK-P4-01** `[Backend]` `[P0]` **Thiết kế Model `Signature`**:
+- [x] **TASK-P4-01** `[Backend]` `[P0]` **Thiết kế Model `Signature` & `SigningSession`**:
   - Bảng `signatures`: `id (UUID PK)`, `version_id (FK)`, `signer_id (FK)`, `key_id (FK)`, `algorithm`, `canonical_manifest_json (TEXT)`, `manifest_sha256 (VARCHAR 64)`, `signature_b64 (TEXT)`, `signature_format`, `signed_at`.
+  - Bảng `signing_sessions`: `id (UUID PK)`, `version_id (FK)`, `user_id (FK)`, `key_id (FK)`, `signing_nonce (VARCHAR 64)`, `manifest_sha256`, `is_used`, `expires_at`.
+  - Migration ban đầu `a4f000000004`; remediation bổ sung `a5f000000005_signature_retention.py`: bỏ 6 FK CASCADE, giữ dữ liệu và thêm trigger chặn UPDATE/DELETE signature.
   - *DoD*: Bảng được tạo trong database cục bộ, liên kết khóa ngoại chặt chẽ.
-- [ ] **TASK-P4-02** `[Crypto]` `[P1]` **Đặc tả Cấu Trúc Signed Manifest Schema v1.0**:
+- [x] **TASK-P4-02** `[Crypto]` `[P1]` **Đặc tả Cấu Trúc Signed Manifest Schema v1.0**:
   - Cấu trúc: `{ manifest_version, document_version_id, document_sha256, key_id, signer_fingerprint, algorithm, signing_nonce, signing_timestamp, signing_context }`.
+  - Pydantic schema: `SignedManifest` (`extra='forbid'`, strict, đủ 9 trường, UUID/hex lowercase, nonce canonical, UTC milliseconds; raw API parser từ chối duplicate trước FastAPI).
+  - TypeScript interface: `SignedManifest` (`types/signature.ts`).
   - *DoD*: Định nghĩa schema thống nhất giữa TypeScript (frontend) và Pydantic (backend).
-- [ ] **TASK-P4-03** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Client**: Dùng thư viện `canonicalize` (npm) sắp xếp keys theo từ điển, loại bỏ khoảng trắng, mã hóa UTF-8.
+- [x] **TASK-P4-03** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Client**: Dùng thư viện `canonicalize` (npm) sắp xếp keys theo từ điển, loại bỏ khoảng trắng, mã hóa UTF-8 (`frontend/src/crypto/manifestCanonicalizer.ts`).
   - *DoD*: Sinh ra chuỗi canonical bytes tất định trên trình duyệt.
-- [ ] **TASK-P4-04** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Backend Python**: Đánh giá implementation RFC 8785 đã kiểm chứng và test vectors riêng; không coi `json.dumps(sort_keys=True)` hoặc contract PoP v1 là JCS đầy đủ.
-  - *DoD*: Vượt qua bài kiểm thử **Test Vector `T-22`**: Output canonical bytes của JS và Python trùng nhau 100%.
-- [ ] **TASK-P4-05** `[Backend]` `[P0]` **API `POST /api/v1/documents/{id}/versions/{vid}/prepare-sign`**:
+- [x] **TASK-P4-04** `[Crypto]` `[P1]` **Chuẩn Hóa JCS (RFC 8785) Phía Backend Python**: Sử dụng `jcs` library (`backend/app/crypto/jcs.py`), từ chối key trùng lặp, từ chối NaN/Infinity.
+  - *DoD*: Vượt qua bài kiểm thử **Test Vector `T-22`**: Bridge chạy module frontend thực tế và Python trên cùng bytes: golden vectors, Unicode/UTF-16 ordering/number serialization và invalid inputs đã đạt.
+- [x] **TASK-P4-05** `[Backend]` `[P0]` **API `POST /api/v1/documents/{id}/versions/{vid}/prepare-sign`**:
   - Khóa phiên bản sang `READY_TO_SIGN`.
-  - Cấp `signing_nonce` duy nhất có thời hạn 5 phút.
-  - Trả về: `{ document_sha256, version_id, signing_nonce, timestamp }`.
+  - Cấp `signing_nonce` CSPRNG duy nhất có thời hạn 5 phút.
+  - Trả về: `{ manifest, manifest_sha256, expires_at }`.
   - *DoD*: Khóa phiên bản chống chỉnh sửa đồng thời, cấp nonce chống replay.
-- [ ] **TASK-P4-06** `[Crypto]` `[P0]` **Ký Số Phía Trình Duyệt Bằng WebCrypto (`frontend/src/crypto/signer.ts`)**:
-  - Giải mã Private Key trong RAM bằng Passphrase.
+- [x] **TASK-P4-06** `[Crypto]` `[P0]` **Ký Số Phía Trình Duyệt Bằng WebCrypto (`frontend/src/crypto/signer.ts`)**:
+  - Sử dụng CryptoKey RSA-PSS trực tiếp từ IndexedDB.
   - Tạo Manifest $\to$ Chuẩn hóa JCS $\to$ `canonical_bytes`.
   - Ký: `window.crypto.subtle.sign({ name: "RSA-PSS", saltLength: 32 }, privateKey, canonical_bytes)`.
   - Xuất ra chuỗi chữ ký số Base64.
-  - *DoD*: Ký thành công mảng byte canonical manifest phía máy khách.
-- [ ] **TASK-P4-07** `[Backend]` `[P0]` **API `POST /api/v1/signatures` & Xác Minh Hai Đầu**:
-  - Nhận: `{ version_id, key_id, manifest_json, signature_b64 }`.
-  - Kiểm tra `signing_nonce` còn hạn và chưa dùng.
-  - **Tải mảng byte PDF gốc từ thư mục lưu trữ cục bộ `data/storage/`**.
+  - *DoD*: Ký thành công mảng byte canonical manifest phía máy khách. Private Key không rời khỏi trình duyệt.
+- [x] **TASK-P4-07** `[Backend]` `[P0]` **API `POST /api/v1/signatures` & Xác Minh Hai Đầu**:
+  - Nhận: `{ version_id, key_id, manifest, signature_b64 }`.
+  - Tiêu thụ `signing_nonce` nguyên tử (atomic conditional update), chặn replay và race condition.
+  - **Đọc luồng mảng byte PDF gốc từ `LocalStorageService` (`storage.get_file`)**.
   - Tính SHA-256 mảng byte gốc và đối chiếu với `manifest.document_sha256`.
-  - Chuẩn hóa `manifest_json` bằng JCS Python $\to$ `server_canonical_bytes`.
-  - Lấy Public Key của `key_id` từ DB $\to$ Thực thi hàm `verify()` bằng Python `cryptography`.
-  - Nếu OK: Lưu chữ ký vào DB, chuyển trạng thái phiên bản sang `SIGNED`, đánh dấu nonce đã dùng.
+  - Chuẩn hóa `manifest` bằng JCS Python $\to$ `server_canonical_bytes`.
+  - Lấy Public Key của `key_id` từ DB $\to$ Thực thi hàm `verify()` bằng Python `cryptography` (RSA-PSS, salt length 32).
+  - Nếu OK: Lưu chữ ký vào DB, chuyển trạng thái phiên bản sang `SIGNED`.
   - Nếu sai: Trả về `422 Unprocessable Entity`, tuyệt đối không lưu chữ ký giả mạo.
   - *DoD*: Đảm bảo chữ ký được verify toán học thành công trước khi ghi nhận vào hệ thống.
-- [ ] **TASK-P4-08** `[Frontend]` `[P0]` **Trình Xem PDF Sandbox (`frontend/src/components/PDFViewer/`)**: Xem trước nội dung tài liệu bằng `pdfjs-dist` chạy trong Web Worker cô lập trước khi bấm ký.
-  - *DoD*: Hiển thị tài liệu PDF mượt mà, ngăn chặn thực thi mã script nhúng.
-- [ ] **TASK-P4-09** `[Frontend]` `[P0]` **Hộp Thoại Ký Số Trực Quan (`frontend/src/pages/Documents/SignModal.tsx`)**: Chọn khóa ký, nhập Passphrase, hiển thị thông tin ký, nút "Ký số ngay".
-  - *DoD*: Người dùng thực hiện ký số dễ dàng chỉ trong vài giây.
-- [ ] **TASK-P4-10** `[Backend]` `[P1]` **Chống Tấn Công Replay Chữ Ký**: Một `signing_nonce` chỉ được chấp nhận đúng 1 lần; gửi lại chữ ký cũ sẽ bị từ chối ngay.
-  - *DoD*: Đã kiểm chứng qua bài test `T-18`.
-- [ ] **TASK-P4-11** `[Backend]` `[P1]` **Xử Lý Tranh Chấp Ký Song Song (Concurrency Race)**: Khóa lạc quan hoặc trạng thái `READY_TO_SIGN` ngăn chặn 2 người cùng ký đè lên 1 bản nháp.
-  - *DoD*: Đã kiểm chứng qua bài test `T-12`.
-- [ ] **TASK-P4-12** `[Crypto]` `[P1]` **Hỗ Trợ Ký Bằng ECDSA P-256**: Bổ sung hàm ký ECDSA phía client và verify phía backend với chuẩn hóa Low-S.
-  - *DoD*: Hệ thống hỗ trợ song song cả 2 thuật toán RSA-PSS 3072 và ECDSA P-256.
+- [x] **TASK-P4-08** `[Frontend]` `[P0]` **PDF Preview có giới hạn tài nguyên**: PDF.js 4.10.38 + Vite worker .mjs; hash chính bytes preview <=20MiB; một trang, canvas <=4M pixels, AbortController/cancel/page cleanup/loading-task destroy (document + owned worker).
+  - *DoD đã kiểm chứng*: 9 component tests + benchmark PDF.js/native canvas thật 1/5/10/20MB. Chưa đo heap/GPU browser hoặc PDF scan phức tạp; không coi Worker là sandbox tuyệt đối.
+- [x] **TASK-P4-09** `[Frontend]` `[P0]` **Hộp Thoại Ký Số Trực Quan (`frontend/src/pages/Documents/SignModal.tsx`)**:
+  - Tải khóa active từ backend, đối chiếu private key trong IndexedDB.
+  - Hiển thị PDF preview đã hash; bắt buộc consent và đối chiếu manifest với bytes/version/key/fingerprint public key thực tế; bỏ callback cũ khi đổi selection.
+  - Chuẩn bị manifest, xác nhận cam kết ký, ký số WebCrypto RSA-PSS và gửi backend.
+  - Tích hợp nút Ký số và Chi tiết chữ ký vào `DocumentDetail`.
+  - *DoD đã kiểm chứng*: 18 SignModal tests; lost-response query cả signature/version, exact match mới báo thành công, UNKNOWN giữ public context qua remount, retry cùng chữ ký không ký lại. Browser E2E chưa chạy.
+- [x] **TASK-P4-10** `[Backend]` `[P1]` **Chống Tấn Công Replay Chữ Ký**: Một `signing_nonce` chỉ được chấp nhận đúng 1 lần; gửi lại chữ ký cũ sẽ bị từ chối ngay.
+  - *DoD*: Đã kiểm chứng qua bài test `T-18` (`test_t18_replay_nonce_reuse`, `test_t18_expired_nonce_rejected`, `test_t18_cross_version_nonce_rejected`).
+- [x] **TASK-P4-11** `[Backend]` `[P1]` **Xử Lý Tranh Chấp Ký Song Song (Concurrency Race)**: Khóa nguyên tử qua conditional nonce update `is_used = 0 -> 1`, expiry theo đồng hồ SQLite và recheck key/version/owner/binding dưới writer lock và ràng buộc `UNIQUE(version_id)` trong bảng `signatures`.
+  - *DoD*: Đã kiểm chứng qua bài test `T-12` (`test_t12_concurrency_race_condition`).
+- [x] **TASK-P4-12** `[Crypto]` `[P1]` **Đánh Giá Thuật Toán Ký Bằng ECDSA P-256 (DEFERRED)**:
+  - Đánh giá kiến trúc: Manifest API hiện chỉ chấp nhận `RSA-PSS-3072`; enum DB giữ giá trị ECDSA dự phòng, chưa cung cấp ECDSA signing. Hỗ trợ ECDSA P-256 phía client/backend được đánh giá khả thi và tạm hoãn (DEFERRED) để tập trung vào Verification Engine (Phase 5).
+  - *DoD*: Đánh giá kiến trúc chi tiết, cập nhật tài liệu báo cáo kỹ thuật Phase 4.
+
+**Bằng chứng remediation Phase 4 (15/11/2026):** 196 backend tests, 72 frontend tests, strict tsc, production build và Alembic check đạt. DB thật upgrade sau backup, row counts giữ nguyên, backup cũ checksum không đổi và đã gitignore. READY cho phát triển Phase 5 theo gates tự động; chưa phải production release. Chi tiết root cause, test và residual risk: [`docs/phase4-report.md`](docs/phase4-report.md).
+
+- [x] **FIX-P4-01**: Signature read IDOR/owner relationship regression.
+- [x] **FIX-P4-02**: Consume-time expiry/revoke/state/hash recheck; same/different nonce concurrency, rollback và SQLite busy.
+- [x] **FIX-P4-03**: BufferSource qua helper, strict TypeScript/build PASS.
+- [x] **FIX-P4-04**: Preview byte hash + manifest/key binding; consent và stale-flow protection.
+- [x] **FIX-P4-05**: Strict required manifest + duplicate JSON tại raw request boundary.
+- [x] **FIX-P4-06**: Signature retention triggers, additive migration, populated-data preservation và schema check.
+- [x] **FIX-P4-07**: PDF.js patched/canvas/cleanup; lost-response reconciliation và durable public context.
+- [x] **FIX-P4-08**: TS↔Python byte bridge, real frontend WebCrypto signing→Python verify→DB, full regression và báo cáo.
+- [ ] **P4-FOLLOWUP-BROWSER**: Browser E2E thật Chrome/Safari/Firefox + complex/scanned PDF và đo worker/heap/GPU khi mở/đóng lặp.
+- [ ] **P4-FOLLOWUP-RUNTIME**: Chốt runtime hỗ trợ canonicalize/PDF.js mới, đánh giá nâng PDF.js nhánh được upstream bảo trì và React Router major để xử lý 2 moderate advisories. Không tự nâng macOS/runtime trong remediation này.
 
 ---
 

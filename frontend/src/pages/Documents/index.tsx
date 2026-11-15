@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { FileText, UploadCloud, Download, Copy, Check, Lock, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { FileText, UploadCloud, Download, Copy, Check, Lock, ArrowLeft, ShieldCheck, PenTool, Eye } from 'lucide-react';
 import { documentsApi, Document, Version } from '../../api/documents';
+import { SignModal } from './SignModal';
+import { SignatureDetailsModal } from './SignatureDetailsModal';
 import './documents.css';
 
 export async function errorMessage(error: unknown): Promise<string> {
@@ -75,6 +77,9 @@ export function DocumentDetail() {
   const [doc, setDoc] = useState<Document | null>(null), [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [copied, setCopied] = useState(''), [busy, setBusy] = useState('');
   const [hasMore, setHasMore] = useState(false);
+  const [signingVersion, setSigningVersion] = useState<Version | null>(null);
+  const [inspectingVersion, setInspectingVersion] = useState<Version | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try { const [document, history] = await Promise.all([documentsApi.detail(id), documentsApi.versions(id)]); setDoc(document); setVersions(history); setHasMore(history.length === 100); }
@@ -105,9 +110,41 @@ export function DocumentDetail() {
           <div className="version-heading"><div><h3>Phiên bản {version.version_no}</h3><p>{version.original_filename}</p></div><span className={`state-tag state-${version.state}`}>{version.state}</span></div>
           <p className="version-meta">{date(version.created_at)} · {size(version.file_size_bytes)}{version.locked_at ? ` · Đã khóa ${date(version.locked_at)}` : ''}</p>
           <div className="hash-panel"><span>SHA-256</span><code>{version.file_sha256}</code><button aria-label={`Sao chép SHA-256 phiên bản ${version.version_no}`} disabled={busy === version.id} onClick={() => void action(version, 'copy')}>{copied === version.id ? <Check size={17} /> : <Copy size={17} />}</button></div>
-          <div className="version-actions"><button disabled={busy === version.id} onClick={() => void action(version, 'download')}><Download size={16} /> Tải PDF</button>{version.state === 'DRAFT' && <button disabled={busy === version.id} onClick={() => void action(version, 'ready')}><Lock size={16} /> Khóa để chuẩn bị ký</button>}</div>
+          <div className="version-actions">
+            <button disabled={busy === version.id} onClick={() => void action(version, 'download')}><Download size={16} /> Tải PDF</button>
+            {version.state === 'DRAFT' && <button disabled={busy === version.id} onClick={() => void action(version, 'ready')}><Lock size={16} /> Khóa để chuẩn bị ký</button>}
+            {version.state === 'READY_TO_SIGN' && <button className="font-semibold text-emerald-700 hover:text-emerald-800" disabled={busy === version.id} onClick={() => setSigningVersion(version)}><PenTool size={16} /> Ký số (Sign)</button>}
+            {version.state === 'SIGNED' && <button className="font-semibold text-sky-700 hover:text-sky-800" disabled={busy === version.id} onClick={() => setInspectingVersion(version)}><Eye size={16} /> Chi tiết chữ ký</button>}
+          </div>
         </li>)}</ol>{hasMore && <button className="document-more" onClick={() => void more()}>Xem phiên bản cũ hơn</button>}
       </section>
+
+      {/* Sign Document Modal */}
+      {signingVersion && (
+        <SignModal
+          documentId={id}
+          versionId={signingVersion.id}
+          versionNo={signingVersion.version_no}
+          documentTitle={doc.title}
+          fileSha256={signingVersion.file_sha256}
+          onClose={() => setSigningVersion(null)}
+          onSuccess={() => {
+            setSigningVersion(null);
+            void load();
+          }}
+        />
+      )}
+
+      {/* Signature Details Modal */}
+      {inspectingVersion && (
+        <SignatureDetailsModal
+          documentId={id}
+          versionId={inspectingVersion.id}
+          versionNo={inspectingVersion.version_no}
+          documentTitle={doc.title}
+          onClose={() => setInspectingVersion(null)}
+        />
+      )}
     </>}
   </div>;
 }

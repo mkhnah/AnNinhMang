@@ -1234,3 +1234,14 @@ Một tính năng hoặc giai đoạn chỉ được coi là hoàn thành (**DON
 
 **KẾT LUẬN**: Bản kế hoạch triển khai Version 3.0 đã hoàn thiện ở cấp độ chuyên sâu cao nhất, chính xác về mật mã, tối ưu cho phần cứng máy MacBook 8GB RAM và sẵn sàng 100% để chuyển hóa thành tệp `todo.md`.
 
+
+
+## Phase 4 security remediation — kiểm chứng 15/11/2026
+
+READY cho phát triển Phase 5 theo release gates tự động: 196 backend tests, 72 frontend tests, strict TypeScript, production build và Alembic check PASS. Chi tiết và giới hạn: [docs/phase4-report.md](docs/phase4-report.md).
+
+Đã sửa owner JOIN khi đọc signature, consume nonce kiểm tra expiry/key/version/binding tại writer transaction, strict manifest/raw duplicate JSON, immutable signature retention và migration bổ sung a5 giữ dữ liệu. Client hash chính bytes preview, kiểm tra manifest/key/consent, chống stale flow; PDF.js 4.10.38 giới hạn canvas và cleanup; lost response reconcile exact attempt/version/signature và giữ public context trong sessionStorage. Đã chứng minh frontend WebCrypto thực tế → Python verify → persistence và JCS byte interoperability.
+
+DB thật được backup SQLite online trước upgrade; row counts và checksum backup `docsign.db.bak_pre_phase4` giữ nguyên. Backup đã gitignore. Không reset DB, xóa evidence, commit/push hoặc triển khai Phase 5.
+
+Trước release production còn cần browser E2E/IndexedDB/worker thật, PDF phức tạp và memory/leak browser, runtime tương thích engine support, đánh giá PDF.js nhánh mới được bảo trì và React Router major (2 moderate advisories còn lại). Benchmark Node/native canvas hiện chỉ là PDF tổng hợp, không phải cam kết RAM trình duyệt. ECDSA/PAdES/blockchain tiếp tục hoãn; không có khẳng định “100% secure” hoặc production-ready.
