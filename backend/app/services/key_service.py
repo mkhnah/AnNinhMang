@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from backend.app.models.enums import KeyStatus
 from backend.app.models.key import PublicKey, SigningChallenge
 from backend.app.schemas.key import ChallengeCreateRequest, ChallengeResponse, KeyRegisterRequest, PublicKeyResponse
+from backend.app.services.audit_service import append_audit, log_access_denied
 
 
 def utc_now() -> datetime:
@@ -193,6 +194,7 @@ class KeyService:
             )
 
         if challenge.user_id != user_id:
+            log_access_denied(db, user_id, "CHALLENGE", challenge.id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Challenge không thuộc về tài khoản hiện tại (phòng chống cross-user replay)"
@@ -323,6 +325,8 @@ class KeyService:
                 created_at=now
             )
             db.add(new_key)
+            append_audit(db, "KEY_GENERATE", actor_id=user_id, target_type="KEY", target_id=new_key.id,
+                         details={"algorithm": new_key.algorithm, "fingerprint": computed_fingerprint})
             db.commit()
             db.refresh(new_key)
 
@@ -366,12 +370,14 @@ class KeyService:
             select(PublicKey).where(PublicKey.id == key_id)
         )
         if not key:
+            log_access_denied(db, user_id, "KEY", key_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Không tìm thấy khóa công khai"
             )
 
         if key.user_id != user_id:
+            log_access_denied(db, user_id, "KEY", key.id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Bạn không có quyền thu hồi khóa của người dùng khác"
@@ -381,8 +387,12 @@ class KeyService:
             # Idempotent response
             return PublicKeyResponse.model_validate(key)
 
-        key.status = KeyStatus.REVOKED
-        key.revoked_at = utc_now()
+        changed = db.execute(update(PublicKey).where(
+            PublicKey.id == key_id, PublicKey.user_id == user_id, PublicKey.status != KeyStatus.REVOKED
+        ).values(status=KeyStatus.REVOKED, revoked_at=utc_now()).execution_options(synchronize_session=False))
+        if changed.rowcount == 1:
+            append_audit(db, "KEY_REVOKE", actor_id=user_id, target_type="KEY", target_id=key_id,
+                         details={"fingerprint": key.fingerprint})
         db.commit()
         db.refresh(key)
 

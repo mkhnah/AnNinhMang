@@ -10,6 +10,7 @@ from backend.app.core.database import get_db
 from backend.app.auth.jwt import decode_access_token
 from backend.app.models.user import User
 from backend.app.models.enums import UserRole, UserStatus
+from backend.app.services.audit_service import log_access_denied, request_context
 
 security_bearer = HTTPBearer(auto_error=False)
 
@@ -76,6 +77,9 @@ def get_current_user(
         )
 
     request.state.auth_source = auth_source
+    db.info["audit_context"] = request_context(
+        request.client.host if request.client else None, request.headers.get("user-agent")
+    )
     return user
 
 
@@ -84,8 +88,9 @@ def require_role(required_role: UserRole) -> Callable:
     Dependency factory that checks if current user has the required role.
     Prevents unauthorized privilege escalation.
     """
-    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+    def role_checker(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
         if current_user.role != required_role:
+            log_access_denied(db, current_user.id, "USER", current_user.id, reason="ROLE_REQUIRED")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied: {required_role.value} privileges required."

@@ -26,6 +26,7 @@ from backend.app.schemas.signature import (
     SignatureResponse,
 )
 from backend.app.storage.local import LocalStorageService
+from backend.app.services.audit_service import append_audit, log_access_denied
 
 
 def utc_now() -> datetime:
@@ -57,6 +58,7 @@ class SignatureService:
             select(Document).where(Document.id == document_id, Document.owner_id == user_id)
         )
         if not doc:
+            log_access_denied(db, user_id, "DOCUMENT", document_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập"
@@ -70,6 +72,7 @@ class SignatureService:
             )
         )
         if not version:
+            log_access_denied(db, user_id, "VERSION", version_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Phiên bản tài liệu không tồn tại"
@@ -99,6 +102,7 @@ class SignatureService:
             )
 
         if key.user_id != user_id:
+            log_access_denied(db, user_id, "KEY", key.id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Khóa công khai không thuộc quyền sở hữu của tài khoản hiện tại"
@@ -215,6 +219,7 @@ class SignatureService:
             select(DocumentVersion).where(DocumentVersion.id == req.version_id)
         )
         if not version:
+            log_access_denied(db, user_id, "VERSION", req.version_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Phiên bản tài liệu không tồn tại"
@@ -224,6 +229,7 @@ class SignatureService:
             select(Document).where(Document.id == version.document_id, Document.owner_id == user_id)
         )
         if not doc:
+            log_access_denied(db, user_id, "DOCUMENT", version.document_id)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập"
@@ -258,6 +264,7 @@ class SignatureService:
             )
 
         if key.user_id != user_id:
+            log_access_denied(db, user_id, "KEY", key.id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Khóa công khai không thuộc quyền sở hữu của người dùng hiện tại"
@@ -319,6 +326,7 @@ class SignatureService:
             )
 
         if session.user_id != user_id:
+            log_access_denied(db, user_id, "SIGNING_SESSION", session.id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Signing nonce không thuộc về tài khoản hiện tại"
@@ -471,6 +479,8 @@ class SignatureService:
 
             # 10.3. Update DocumentVersion state to SIGNED (validated by SQLite trigger)
             version.state = VersionState.SIGNED
+            append_audit(db, "DOCUMENT_SIGN", actor_id=user_id, target_type="VERSION", target_id=version.id,
+                         details={"key_id": key.id, "signature_id": new_signature.id, "manifest_sha256": computed_manifest_sha256})
             db.commit()
             db.refresh(new_signature)
 
@@ -507,6 +517,7 @@ class SignatureService:
             select(Document).where(Document.id == document_id, Document.owner_id == user_id)
         )
         if not doc:
+            log_access_denied(db, user_id, "DOCUMENT", document_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập"

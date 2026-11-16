@@ -2,7 +2,7 @@
 # HỆ THỐNG KÝ SỐ VÀ XÁC THỰC TÀI LIỆU ĐIỆN TỬ
 ## Research and Development of a Digital Document Signing and Verification System
 **Môn học**: An ninh mạng | **Phiên bản**: 3.1 (Tối ưu Native macOS — KHÔNG BẮT BUỘC DOCKER — Siêu nhẹ cho máy 8GB RAM)  
-**Ngày cập nhật**: 14/11/2026 | **Tình trạng**: Đã sẵn sàng thực thi (Ready for Execution)
+**Ngày cập nhật**: 16/11/2026 | **Tình trạng**: Phase 7 hoàn thành triển khai và các gate tự động
 
 ---
 
@@ -43,11 +43,11 @@ Nhằm giải phóng hoàn toàn gánh nặng bộ nhớ cho máy **MacBook Appl
 | **Phase 4** | Lõi Ký số Detached Manifest (RFC 8785 JCS) | P0 - Core | 12 | 12/12 | Gates tự động đạt; ECDSA chỉ đánh giá, chưa triển khai |
 | **Phase 5** | Động cơ Xác minh Đa chiều (Verification Engine)| P1 - Security | 11 | 10/11 | Gates tự động đạt; ECDSA DEFERRED |
 | **Phase 6** | Chia sẻ An toàn & Xác thực Công khai qua QR | P0 - Core | 10 | 8/10 | Automated gates đạt; camera/browser/PDF thật NOT TESTED |
-| **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 0/10 | Chưa bắt đầu |
+| **Phase 7** | Nhật ký Kiểm toán Hash-Chained & Dashboard | P1 - Security | 10 | 10/10 | Gates tự động và QA Chrome desktop/giả lập 320px đạt |
 | **Phase 8** | Bộ Kiểm thử An ninh Chuyên sâu (T-01 đến T-28) | P1 - Security | 12 | 0/12 | Chưa bắt đầu |
 | **Phase 9** | Tính năng Nâng cao (PAdES / Blockchain) | P3 - Optional | 10 | 0/10 | Chưa bắt đầu |
 | **Phase 10** | Benchmark, Tài liệu Kỹ thuật & Kịch bản Demo | P1 - Security | 11 | 0/11 | Chưa bắt đầu |
-| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **76/121 (62.8%)** | **Đang triển khai** |
+| **TỔNG CỘNG** | **Toàn bộ Dự án Ký số & Xác thực** | — | **121 Tasks** | **84/121 (69.4%)** | **Đang triển khai** |
 
 ---
 
@@ -388,32 +388,44 @@ Kết quả release cuối: **319 backend tests**, **115 frontend tests**, stric
 ---
 
 ### GIAI ĐOẠN 7: NHẬT KÝ KIỂM TOÁN CHUỖI BĂM & DASHBOARD (PHASE 7)
-*Mục tiêu: Ghi nhận mọi sự kiện an ninh vào chuỗi băm bất biến (Hash-Chaining) và xây dựng Dashboard an ninh.*
+*Mục tiêu: Ghi nhận các sự kiện an ninh vào chuỗi băm có thể kiểm tra toàn vẹn (Hash-Chaining) và xây dựng Dashboard an ninh.*
 
-- [ ] **TASK-P7-01** `[Backend]` `[P0]` **Thiết kế Model `AuditLog`**:
-  - Bảng `audit_logs`: `id (BIGSERIAL PK)`, `prev_hash (VARCHAR 64)`, `entry_hash (VARCHAR 64 UK)`, `actor_id (FK)`, `action`, `target_type`, `target_id`, `client_ip`, `user_agent`, `status`, `details_json`, `created_at`.
+- [x] **TASK-P7-01** `[Backend]` `[P0]` **Thiết kế Model `AuditLog`**:
+  - Bảng `audit_logs`: `id (BIGINT PK, INTEGER trên SQLite)`, `prev_hash (VARCHAR 64)`, `entry_hash (VARCHAR 64 UK)`, `actor_id (FK)`, `action`, `target_type`, `target_id`, `client_ip`, `user_agent`, `status`, `details_json`, `created_at`. ID được cấp tuần tự khi khóa writer của `audit_chain_state`; migration `a8f000000008` bổ sung hai bảng.
   - *DoD*: Bảng được tạo trong database cục bộ, lưu chuỗi hash liên kết.
-- [ ] **TASK-P7-02** `[Crypto]` `[P1]` **Thuật Toán Chuỗi Băm Kiểm Toán (Hash-Chaining Engine)**:
+- [x] **TASK-P7-02** `[Crypto]` `[P1]` **Thuật Toán Chuỗi Băm Kiểm Toán (Hash-Chaining Engine)**:
   - Bản ghi đầu tiên: `prev_hash = "GENESIS_CAPSTONE_SECURITY_LOG_2026"`.
-  - Mỗi bản ghi mới tính:
-    $$\text{entry\_hash} = \text{SHA256}(\text{prev\_hash} \,||\, \text{id} \,||\, \text{actor\_id} \,||\, \text{action} \,||\, \text{target\_id} \,||\, \text{timestamp} \,||\, \text{details\_hash})$$
+  - Mỗi bản ghi mới tính SHA-256 trên domain `DOCSIGN_AUDIT_V1\0` nối với RFC 8785 JCS của payload. Payload chứa schema version, ID dạng chuỗi, `prev_hash`, actor/action/target, peer IP, browser family, status, timestamp UTC chính xác microsecond và SHA-256 của `details_json` canonical. Ghi event và cập nhật checkpoint cùng transaction nghiệp vụ.
   - *DoD*: Chuỗi băm được liên kết chặt chẽ qua từng bản ghi mới.
-- [ ] **TASK-P7-03** `[Backend]` `[P1]` **Ghi Nhận Tự Động Biến Cố An Ninh**: Ghi nhận các sự kiện: `USER_LOGIN`, `KEY_GENERATE`, `KEY_REVOKE`, `DOCUMENT_UPLOAD`, `DOCUMENT_SIGN`, `DOCUMENT_VERIFY`, `SHARE_QR`, `ACCESS_DENIED_IDOR`.
+- [x] **TASK-P7-03** `[Backend]` `[P1]` **Ghi Nhận Tự Động Biến Cố An Ninh**: Ghi nhận các sự kiện: `USER_LOGIN`, `KEY_GENERATE`, `KEY_REVOKE`, `DOCUMENT_UPLOAD`, `DOCUMENT_SIGN`, `DOCUMENT_VERIFY`, `SHARE_QR`, `ACCESS_DENIED_IDOR`.
+  - `KEY_GENERATE` được ghi khi đăng ký public key với PoP thành công. Login ghi cả kết quả thất bại; login thành công gắn với tạo session. Thu hồi khóa/chia sẻ có tính idempotent. Bổ sung `SHARE_REVOKE` và `ACCESS_DENIED_ROLE`. Denial được lưu sau rollback thay đổi đang chờ, giữ phản hồi phân quyền hiện có.
   - *DoD*: Mọi thao tác quan trọng đều sinh ra 1 dòng log kiểm toán tương ứng.
-- [ ] **TASK-P7-04** `[Backend]` `[P1]` **Quy Tắc Không Log Secret**: Tuyệt đối không ghi Private Key, Passphrase, Token thô vào trường `details_json`.
+- [x] **TASK-P7-04** `[Backend]` `[P1]` **Quy Tắc Không Log Secret**: Tuyệt đối không ghi Private Key, Passphrase, Token thô vào trường `details_json`.
+  - Allowlist trường và kiểu giá trị theo action; bỏ free text, nested payload, email đăng nhập, filename/label, manifest, PDF, headers và credential. User-Agent chỉ giữ browser family, IP chỉ giữ địa chỉ peer hợp lệ. ID không hợp lệ của resource chưa xác định được loại khỏi log.
   - *DoD*: File log hoàn toàn sạch sẽ, không lộ bí mật.
-- [ ] **TASK-P7-05** `[Backend]` `[P1]` **Thuật Toán Phát Hiện Can Thiệp Log `verify_audit_chain`**: Quét tuần tự bảng log, tính lại mã băm từng dòng và so sánh với dòng trước $\to$ Phát hiện ngay lập tức nếu có dòng bị sửa dữ liệu hoặc bị xóa.
+- [x] **TASK-P7-05** `[Backend]` `[P1]` **Thuật Toán Phát Hiện Can Thiệp Log `verify_audit_chain`**: Quét tuần tự bảng log, tính lại mã băm từng dòng và so sánh với dòng trước $\to$ Phát hiện ngay lập tức nếu có dòng bị sửa dữ liệu hoặc bị xóa.
+  - Đọc snapshot SQLite nhất quán, bỏ qua ORM cache, trả ID lỗi đầu tiên. Checkpoint phát hiện xóa cuối chuỗi hoặc xóa toàn bộ log. Khả năng phát hiện truncation phụ thuộc checkpoint được giữ tin cậy; người có quyền sửa toàn bộ DB và checkpoint có thể tính lại chuỗi SHA-256.
   - *DoD*: Đã kiểm chứng qua bài test `T-17`.
-- [ ] **TASK-P7-06** `[Backend]` `[P0]` **API `GET /api/v1/audit/logs` & `GET /api/v1/audit/verify-chain`**: Dành riêng cho quyền ADMIN xem nhật ký và kiểm tra toàn vẹn chuỗi hash.
+  - Kiểm chứng 16/11/2026 trong `tests/test_phase7_audit.py` gồm 29 test mới về tampering, truncation, canonicalization, secret filtering, rollback, concurrency, API lifecycle và migration. Toàn bộ backend đạt **348 tests**, 4 deprecation warnings, 283.70s trên bản sao source đã đối chiếu SHA-256 trong filesystem Linux WSL. Môi trường test dùng binary esbuild Linux 0.25.12 và alias venv tạm để tương thích các test cũ; quyền file Unix được kiểm tra trên filesystem Linux. Database project đã nâng lên `a8f000000008`, Alembic check/FK/integrity PASS; checksum dữ liệu 10 bảng cũ giữ nguyên, backup online tại `data/db/backups/docsign_pre_phase7_20261116_073551.db`. Audit bắt đầu ghi các thao tác mới từ lần nâng cấp này.
+- [x] **TASK-P7-06** `[Backend]` `[P0]` **API `GET /api/v1/audit/logs` & `GET /api/v1/audit/verify-chain`**: Dành riêng cho quyền ADMIN xem nhật ký và kiểm tra toàn vẹn chuỗi hash.
+  - Log có bộ lọc action/status/actor/target/peer IP/thời gian, limit tối đa 100, offset và snapshot_id giữ mốc phân trang khi có log mới. ID trả dạng chuỗi để giữ nguyên BIGINT trên JavaScript. DTO lọc chi tiết theo allowlist và đánh dấu dữ liệu bất thường. API dùng `Cache-Control: no-store`; verify-chain trả thời điểm kiểm tra và ID lỗi đầu tiên.
   - *DoD*: Người dùng thường gọi API bị chặn bằng mã lỗi `403`.
-- [ ] **TASK-P7-07** `[Backend]` `[P0]` **API `GET /api/v1/dashboard/stats`**: Thống kê số lượng văn bản, tỷ lệ chữ ký hợp lệ/giả mạo, số khóa đang hoạt động.
+- [x] **TASK-P7-07** `[Backend]` `[P0]` **API `GET /api/v1/dashboard/stats`**: Thống kê số lượng văn bản, kết quả xác minh, số khóa đang hoạt động.
+  - Giới hạn ADMIN, đọc snapshot SQLite nhất quán. Đếm tài liệu/phiên bản/phiên bản SIGNED, khóa ACTIVE có revoked_at NULL; kết quả và tỷ lệ xác minh thành công trong 30 ngày, biểu đồ 7 ngày theo UTC. Giữ riêng các kết quả tài liệu thay đổi, chữ ký không hợp lệ, khóa thu hồi và chưa thể xác minh. Chưa có lượt xác minh thì tỷ lệ là null.
   - *DoD*: Trả về dữ liệu thống kê tổng hợp phục vụ hiển thị Dashboard.
-- [ ] **TASK-P7-08** `[Frontend]` `[P0]` **Màn Hình Bảng Điều Khiển An Ninh (`frontend/src/pages/Dashboard/`)**: Biểu đồ thống kê trực quan, trạng thái kiểm tra chuỗi băm (Huy hiệu xanh: `AUDIT LOG INTACT`).
+- [x] **TASK-P7-08** `[Frontend]` `[P0]` **Màn Hình Bảng Điều Khiển An Ninh (`frontend/src/pages/Dashboard/`)**: Biểu đồ thống kê trực quan, trạng thái kiểm tra chuỗi băm (Huy hiệu xanh: `AUDIT LOG INTACT`).
+  - Route `/admin/dashboard` được bảo vệ bằng role ADMIN, nối từ Navbar và AdminNav. Tự làm mới 30 giây; lỗi API chuỗi băm hiển thị trạng thái chưa xác định. AbortController loại bỏ response cũ. Thẻ thống kê, biểu đồ, cảnh báo và liên kết truy vết được kiểm thử component.
   - *DoD*: Dashboard sinh động, gây ấn tượng tốt trong buổi bảo vệ.
-- [ ] **TASK-P7-09** `[Frontend]` `[P0]` **Trang Tra Cứu Nhật Ký Kiểm Toán (`frontend/src/pages/Audit/`)**: Bảng hiển thị danh sách log, có cột `prev_hash` và `entry_hash` cho từng dòng.
+- [x] **TASK-P7-09** `[Frontend]` `[P0]` **Trang Tra Cứu Nhật Ký Kiểm Toán (`frontend/src/pages/Audit/`)**: Bảng hiển thị danh sách log, có cột `prev_hash` và `entry_hash` cho từng dòng.
+  - Route ADMIN `/admin/audit`, bộ lọc đồng bộ query string và hỗ trợ deep-link từ cảnh báo; phân trang 20 dòng theo snapshot, hash hiển thị đầy đủ, chi tiết mở rộng, trạng thái rỗng/lỗi/retry. Đổi bộ lọc hoặc xóa bộ lọc tải lại trang đầu; response cũ bị loại bỏ.
   - *DoD*: Admin tra cứu lịch sử hành vi người dùng dễ dàng.
-- [ ] **TASK-P7-10** `[Backend]` `[P1]` **Cảnh Báo An Ninh Tự Động**: Đánh dấu cảnh báo đỏ khi phát hiện chuỗi xác minh thất bại liên tiếp hoặc cố ý truy cập trái phép IDOR.
+- [x] **TASK-P7-10** `[Backend]` `[P1]` **Cảnh Báo An Ninh Tự Động**: Đánh dấu cảnh báo đỏ khi phát hiện chuỗi xác minh chưa thành công liên tiếp hoặc truy cập tài nguyên bị chặn bởi kiểm tra IDOR.
+  - Cửa sổ 15 phút, ngưỡng 3 kết quả xác minh gần nhất liên tiếp chưa thành công theo actor hoặc peer IP công khai. Kết quả VERIFIED ngắt chuỗi; danh tính/IP khác được tách riêng. ACCESS_DENIED_IDOR/DENIED tạo cảnh báo ngay, ACCESS_DENIED_ROLE được giữ riêng. Cảnh báo được tổng hợp khi đọc stats, giới hạn 20 dòng kèm tổng số, tự hết hiệu lực theo cửa sổ thời gian và hiển thị trên Dashboard đang tự làm mới. UNVERIFIABLE được mô tả là chưa thành công.
   - *DoD*: Hiển thị hộp cảnh báo an ninh nổi bật trên Dashboard.
+
+**Kiểm chứng phần ADMIN Phase 7 ngày 16/11/2026.** Full backend regression trên bản sao source đã đối chiếu SHA-256 trong filesystem Linux WSL đạt **369 tests**, 4 deprecation warnings, 293.00s. Sau khi bổ sung kiểm tra offset BIGINT, lượt cuối riêng Phase 7 đạt **51 tests** gồm 29 core audit và 22 ADMIN API. Frontend lượt cuối đạt **126 tests**, TypeScript và production build PASS; build ghi nhận cảnh báo bundle lớn hơn 500kB. Alembic check trên database project PASS. HTTP smoke dùng database QA riêng và session cookie thật xác nhận built SPA, JavaScript asset và cả ba API ADMIN trả 200; no-store, thống kê, cảnh báo và kết quả kiểm tra chuỗi băm đúng fixture. Lượt Computer Use đầu báo app approval timeout; server QA của lượt đó đã dừng sau kiểm tra.
+
+**Kiểm tra lại Chrome sau khi được cấp quyền, 16/11/2026.** Đã quan sát Dashboard trên cửa sổ desktop 960px/1920px và Chrome Responsive 320px. Thống kê, trạng thái AUDIT LOG INTACT, cảnh báo IDOR và chuỗi xác minh chưa thành công hiển thị đúng dữ liệu QA. Liên kết cảnh báo mở Audit Log với bộ lọc action/actor/thời gian đúng; xóa bộ lọc về 30 sự kiện; chuyển từ 1–20 sang 21–30, mở chi tiết và cuộn ngang xem đầy đủ prev_hash/entry_hash thành công. Form Audit và biểu đồ Dashboard hiển thị vừa khung 320px. Console phát hiện favicon `/vite.svg` bị 404; đã thay tham chiếu favicon bằng data URL trống, build lại PASS và xác nhận Console sạch sau reload. Phiên preview mới dùng database QA riêng tại loopback port 5187 và đang mở trên Chrome.
 
 ---
 

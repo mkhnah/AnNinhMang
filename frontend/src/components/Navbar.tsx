@@ -97,9 +97,9 @@ export const Navbar: React.FC = () => {
 
                 {user.role === 'ADMIN' && (
                   <Link
-                    to="/admin"
+                    to="/admin/dashboard"
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive('/admin')
+                      location.pathname.startsWith('/admin')
                         ? 'bg-purple-50 text-purple-700'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
@@ -174,6 +174,11 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+      {user?.role === 'ADMIN' && <div className="md:hidden flex gap-4 overflow-x-auto px-4 py-2 border-t border-slate-100 text-sm">
+        <Link to="/admin/dashboard" className="whitespace-nowrap text-sky-700 font-medium">Tổng quan an ninh</Link>
+        <Link to="/admin/audit" className="whitespace-nowrap text-slate-600">Nhật ký kiểm toán</Link>
+        <Link to="/admin" className="whitespace-nowrap text-slate-600">Tài khoản</Link>
+      </div>}
     </nav>
   );
 };

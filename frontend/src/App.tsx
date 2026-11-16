@@ -13,6 +13,8 @@ import { IndependentVerify } from './pages/Verify/IndependentVerify';
 import { Forbidden } from './pages/Forbidden';
 import { NotFound } from './pages/NotFound';
 import { PublicShare } from './pages/Verify/PublicShare';
+import { Dashboard } from './pages/Dashboard';
+import { Audit } from './pages/Audit';
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -81,6 +83,8 @@ export const App: React.FC = () => {
               <Route path="/documents/:id" element={<ProtectedRoute><DocumentDetail /></ProtectedRoute>} />
 
               {/* Admin Protected Routes */}
+              <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="ADMIN"><Dashboard /></ProtectedRoute>} />
+              <Route path="/admin/audit" element={<ProtectedRoute requiredRole="ADMIN"><Audit /></ProtectedRoute>} />
               <Route
                 path="/admin"
                 element={

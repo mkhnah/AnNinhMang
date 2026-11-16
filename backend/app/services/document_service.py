@@ -10,6 +10,7 @@ from backend.app.models.user import utc_now
 from backend.app.crypto.hasher import sha256_stream
 from backend.app.storage.base import IStorageService
 from backend.app.services.pdf_validator import validate_pdf, sanitize_filename
+from backend.app.services.audit_service import append_audit, log_access_denied
 
 logger = logging.getLogger('docsign.documents')
 
@@ -17,6 +18,7 @@ logger = logging.getLogger('docsign.documents')
 def owned_document(db, document_id, owner_id):
     doc = db.scalar(select(Document).where(Document.id == str(document_id), Document.owner_id == owner_id))
     if doc is None:
+        log_access_denied(db, owner_id, "DOCUMENT", str(document_id), reason="RESOURCE_UNAVAILABLE")
         raise HTTPException(404, 'Không tìm thấy tài liệu')
     return doc
 
@@ -25,6 +27,7 @@ def owned_version(db, document_id, version_id, owner_id):
     owned_document(db, document_id, owner_id)
     version = db.scalar(select(DocumentVersion).where(DocumentVersion.id == str(version_id), DocumentVersion.document_id == str(document_id)))
     if version is None:
+        log_access_denied(db, owner_id, "VERSION", str(version_id), reason="RESOURCE_UNAVAILABLE")
         raise HTTPException(404, 'Không tìm thấy phiên bản')
     return version
 
@@ -87,6 +90,8 @@ def create_version(db, storage: IStorageService, owner_id, upload, document_id=N
                                   file_size_bytes=size, state=VersionState.DRAFT)
         db.add(version)
         doc.updated_at = utc_now()
+        append_audit(db, "DOCUMENT_UPLOAD", actor_id=owner_id, target_type="VERSION", target_id=version_id,
+                     details={"document_id": doc.id, "version_no": number, "file_size_bytes": size, "file_sha256": digest})
         db.commit()
         return version
     except BaseException as error:

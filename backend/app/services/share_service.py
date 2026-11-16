@@ -23,6 +23,7 @@ from backend.app.schemas.share import (
     ShareCreateResponse,
 )
 from backend.app.services.verification_service import VerificationService
+from backend.app.services.audit_service import append_audit, log_access_denied
 from backend.app.storage.base import IStorageService
 
 logger = logging.getLogger("docsign.share")
@@ -94,6 +95,7 @@ def create_share(
         .where(DocumentVersion.id == version_id, Document.owner_id == user_id)
     )
     if version is None:
+        log_access_denied(db, user_id, "VERSION", version_id, reason="RESOURCE_UNAVAILABLE")
         raise HTTPException(404, "Không tìm thấy phiên bản tài liệu hoặc bạn không có quyền truy cập")
 
     # 3. Version state & Signature existence check
@@ -167,6 +169,8 @@ def create_share(
             eligible, include_defaults=False))
         if inserted.rowcount != 1:
             raise HTTPException(422, "Quyền sở hữu, bằng chứng hoặc trạng thái khóa đã thay đổi; không phát hành liên kết")
+        append_audit(db, "SHARE_QR", actor_id=user_id, target_type="SHARE", target_id=share_id,
+                     details={"version_id": version_id, "expires_in_days": days})
         db.commit()
     except HTTPException:
         db.rollback()
@@ -201,10 +205,12 @@ def revoke_share(db: Session, user_id: str, share_id: str) -> None:
     ).first()
 
     if row is None:
+        log_access_denied(db, user_id, "SHARE", share_id, reason="RESOURCE_UNAVAILABLE")
         raise HTTPException(404, "Không tìm thấy liên kết chia sẻ")
 
     s_id, s_revoked_at, doc_owner_id, s_created_by = row
     if user_id != doc_owner_id and user_id != s_created_by:
+        log_access_denied(db, user_id, "SHARE", share_id)
         raise HTTPException(404, "Không tìm thấy liên kết chia sẻ")
 
     # Idempotent: already revoked
@@ -217,6 +223,8 @@ def revoke_share(db: Session, user_id: str, share_id: str) -> None:
         .where(ShareToken.id == share_id, ShareToken.revoked_at.is_(None))
         .values(revoked_at=now)
     )
+    if res.rowcount == 1:
+        append_audit(db, "SHARE_REVOKE", actor_id=user_id, target_type="SHARE", target_id=share_id)
     db.commit()
 
     if res.rowcount != 1:

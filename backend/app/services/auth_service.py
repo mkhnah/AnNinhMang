@@ -17,6 +17,7 @@ from backend.app.models.user import User
 from backend.app.models.session import AuthSession
 from backend.app.models.enums import UserRole, UserStatus
 from backend.app.schemas.auth import UserRegisterRequest
+from backend.app.services.audit_service import append_audit, request_context
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,9 @@ class AuthService:
         if not user:
             # Mitigation for Timing Attack / Account Enumeration
             dummy_verify()
+            append_audit(db, "USER_LOGIN", target_type="USER", status="FAILURE",
+                         details={"reason": "INVALID_CREDENTIALS", "http_status": 401})
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
@@ -70,6 +74,9 @@ class AuthService:
 
         # Check if disabled
         if user.status == UserStatus.DISABLED:
+            append_audit(db, "USER_LOGIN", actor_id=user.id, target_type="USER", target_id=user.id,
+                         status="FAILURE", details={"reason": "DISABLED", "http_status": 403})
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account has been disabled. Please contact administrator."
@@ -85,6 +92,9 @@ class AuthService:
             if now < locked_until_utc:
                 remaining_seconds = int((locked_until_utc - now).total_seconds())
                 minutes = (remaining_seconds // 60) + 1
+                append_audit(db, "USER_LOGIN", actor_id=user.id, target_type="USER", target_id=user.id,
+                             status="FAILURE", details={"reason": "LOCKED", "http_status": 423})
+                db.commit()
                 raise HTTPException(
                     status_code=status.HTTP_423_LOCKED,
                     detail=f"Account is temporarily locked due to multiple failed login attempts. Please try again after {minutes} minute(s)."
@@ -104,6 +114,8 @@ class AuthService:
             if user.failed_login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
                 user.locked_until = now + timedelta(minutes=settings.LOCKOUT_MINUTES)
                 user.status = UserStatus.LOCKED
+                append_audit(db, "USER_LOGIN", actor_id=user.id, target_type="USER", target_id=user.id,
+                             status="FAILURE", details={"reason": "LOCKED", "http_status": 423})
                 db.commit()
                 logger.warning("Account locked for %s due to %d failed attempts", user.email, user.failed_login_attempts)
                 raise HTTPException(
@@ -111,6 +123,8 @@ class AuthService:
                     detail=f"Account has been locked due to {settings.MAX_LOGIN_ATTEMPTS} failed attempts. Please try again after {settings.LOCKOUT_MINUTES} minutes."
                 )
 
+            append_audit(db, "USER_LOGIN", actor_id=user.id, target_type="USER", target_id=user.id,
+                         status="FAILURE", details={"reason": "INVALID_CREDENTIALS", "http_status": 401})
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -159,6 +173,8 @@ class AuthService:
             revoked_at=None
         )
         db.add(session_record)
+        append_audit(db, "USER_LOGIN", actor_id=user.id, target_type="USER", target_id=user.id,
+                     context=request_context(ip_address, user_agent))
         db.commit()
         return access_token, raw_refresh_token
 

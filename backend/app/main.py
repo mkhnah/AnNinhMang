@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
-from backend.app.api.v1 import auth, admin, documents, keys, signatures, verify, shares
+from backend.app.api.v1 import auth, admin, documents, keys, signatures, verify, shares, audit, dashboard
 
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
@@ -96,6 +96,8 @@ app.include_router(signatures.router, prefix="/api/v1")
 app.include_router(verify.router, prefix="/api/v1")
 app.include_router(shares.router, prefix="/api/v1")
 app.include_router(shares.public_router, prefix="/api/v1")
+app.include_router(audit.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])

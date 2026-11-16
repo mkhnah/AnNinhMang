@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from fastapi import Request
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -38,9 +39,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def get_db():
+def get_db(request: Request):
     """Dependency that provides a database session and ensures cleanup."""
     db = SessionLocal()
+    from backend.app.services.audit_service import request_context
+    db.info["audit_context"] = request_context(
+        request.client.host if request.client else None, request.headers.get("user-agent")
+    )
     try:
         yield db
     finally:

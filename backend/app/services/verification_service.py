@@ -18,6 +18,7 @@ from backend.app.models.key import PublicKey
 from backend.app.models.user import User
 from backend.app.models.signature import Signature
 from backend.app.models.verification import VerificationEvent
+from backend.app.services.audit_service import append_audit, log_access_denied
 from backend.app.schemas.signature import SignedManifest
 from backend.app.schemas.verify import (
     CertificateTrust, CryptographicValidity, DocumentIntegrity, KeyOwnership,
@@ -177,6 +178,7 @@ class VerificationService:
         version = db.scalar(select(DocumentVersion).join(Document).where(
             DocumentVersion.id == version_id, Document.id == document_id, Document.owner_id == user_id))
         if version is None:
+            log_access_denied(db, user_id, "VERSION", version_id, reason="RESOURCE_UNAVAILABLE")
             raise HTTPException(404, "Document/version unavailable")
         sig = db.scalar(select(Signature).where(Signature.version_id == version.id))
         if sig is None:
@@ -223,6 +225,14 @@ class VerificationService:
                     document_integrity=d.document_integrity.value, key_ownership=d.key_ownership.value,
                     certificate_trust=d.certificate_trust.value, key_revocation_status=d.key_revocation_status.value,
                     summary_status=result.summary_status.value))
+                append_audit(db, "DOCUMENT_VERIFY", actor_id=actor_id, target_type="VERIFICATION",
+                             target_id=result.verification_id, details={
+                                 "verification_id": result.verification_id,
+                                 "verification_mode": result.verification_mode.value,
+                                 "summary_status": result.summary_status.value,
+                                 "cryptographic_validity": d.cryptographic_validity.value,
+                                 "document_integrity": d.document_integrity.value,
+                             })
                 db.commit()
             except Exception:
                 db.rollback()
@@ -372,9 +382,12 @@ class VerificationService:
         actor_id, document_id, result = verification_receipts.lookup(receipt_id)
         if actor_id is not None:
             if actor_id != user_id or db is None:
+                if db is not None and user_id is not None:
+                    log_access_denied(db, user_id, "VERIFICATION", result.verification_id)
                 raise HTTPException(404, "Receipt unavailable")
             version = db.scalar(select(DocumentVersion.id).join(Document).where(
                 DocumentVersion.id == result.document_version_id, Document.id == document_id, Document.owner_id == user_id))
             if version is None:
+                log_access_denied(db, user_id, "VERSION", result.document_version_id, reason="RESOURCE_UNAVAILABLE")
                 raise HTTPException(404, "Receipt unavailable")
         return VerificationReportResponse(report_id=str(uuid.uuid4()), generated_at=datetime.now(timezone.utc), verification_result=VerificationReportResult.model_validate(result.model_dump()))
