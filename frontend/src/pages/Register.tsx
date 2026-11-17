@@ -85,9 +85,7 @@ export const Register: React.FC = () => {
             <ShieldCheck className="w-7 h-7" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Tạo tài khoản mới</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Đăng ký để tham gia ký số và xác thực tài liệu
-          </p>
+
         </div>
 
         {/* Alerts */}

@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 
 
 class Settings(BaseSettings):
@@ -35,6 +35,26 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., description="Application secret key for signing")
     JWT_SECRET_KEY: str = Field(..., description="Secret key for JWT generation and verification")
     JWT_ALGORITHM: str = "HS256"
+
+    PKI_ENABLED: bool = False
+    CA_PRIVATE_KEY_PATH: str = ""
+    CA_PRIVATE_KEY_PASSWORD_FILE: str = ""
+    CA_PRIVATE_KEY_PASSWORD: SecretStr | None = None
+    CA_CERTIFICATE_PATH: str = ""
+    CA_TRUSTED_ROOT_SHA256: str = ""
+    CA_ADDITIONAL_TRUSTED_ROOT_SHA256: str = ""
+    CA_USER_CERT_VALIDITY_DAYS: int = Field(365, ge=1, le=3650)
+    PKI_CERTIFICATES_PER_DAY: int = Field(60, ge=1, le=1000)
+
+    TSA_ENABLED: bool = False
+    TSA_OPENSSL_BINARY: str = 'openssl'
+    TSA_CERTIFICATE_PATH: str = ''
+    TSA_PRIVATE_KEY_PATH: str = ''
+    TSA_PRIVATE_KEY_PASSWORD_FILE: str = ''
+    TSA_CA_CERTIFICATE_PATH: str = ''
+    TSA_ROOT_SHA256: str = ''
+    TSA_SIGNER_SHA256: str = ''
+    TSA_TIMEOUT_SECONDS: float = Field(10, gt=0, le=30)
 
     # Token Lifetimes
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15

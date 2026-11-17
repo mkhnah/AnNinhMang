@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    ShieldCheck,
     AlertTriangle,
     XCircle,
     HelpCircle,
@@ -18,6 +17,7 @@ import {
     VerificationReportResponse,
 } from '../../types/verify';
 import { verifyApi } from '../../api/verify';
+import { pkiLabels } from './PkiResultPanel';
 
 interface VerificationResultPanelProps {
     result: VerificationResultResponse;
@@ -148,244 +148,83 @@ export const VerificationResultPanel: React.FC<VerificationResultPanelProps> = (
                     </div>
                 </div>)}
             </div>
-            <p className="text-xs mt-2">Sự khác biệt giữa các ký tự hash không cho biết chính xác vị trí byte đã bị sửa trong tài liệu.</p>
+
             <p role="status" className="text-xs">{copyNotice}</p>
         </div>
     );
 
     return (
-        <div className="space-y-6">
+        <div className="verification-result space-y-6">
             {/* Summary Banner */}
-            <div className={`p-5 rounded-xl border flex items-start gap-4 ${summary.bg}`}>
+            <div className={`p-5 rounded-xl border flex flex-wrap items-start gap-4 ${summary.bg}`}>
                 {summary.icon}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold">{summary.title}</h3>
-                    <p className="text-sm mt-1 opacity-90">{summary.desc}</p>
+
                     {documentTitle && (
                         <p className="text-xs font-semibold mt-2 text-slate-600">
                             Tài liệu: <span className="text-slate-800">{documentTitle}</span>
                         </p>
                     )}
                 </div>
-                <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/80 border shadow-sm">
-                        {result.verification_mode === 'INTERNAL' ? 'Chế độ nội bộ' : 'Kiểm tra độc lập'}
-                    </span>
-                </div>
             </div>
 
-            {/* Six Dimensions Grid */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                <h4 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-sky-600" />
-                    Kết quả phân tích 6 chiều độc lập
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* 1. Cryptographic Validity */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <Lock className="w-4 h-4 text-slate-400" />
-                                    1. Tính hợp lệ mật mã
-                                </span>
-                                <span
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        results.cryptographic_validity === 'VALID'
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : results.cryptographic_validity === 'INVALID'
-                                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {results.cryptographic_validity}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.cryptographic_validity === 'VALID'
-                                    ? 'Chữ ký RSA-PSS 3072 khớp toán học chính xác với Manifest RFC 8785.'
-                                    : results.cryptographic_validity === 'INVALID'
-                                    ? 'Chữ ký không khớp với khóa công khai hoặc nội dung manifest.'
-                                    : 'Không thể tính toán chữ ký do thiếu dữ liệu hoặc cấu trúc sai.'}
-                            </p>
-                        </div>
-                    </div>
 
-                    {/* 2. Document Integrity */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <FileCheck className="w-4 h-4 text-slate-400" />
-                                    2. Toàn vẹn tài liệu
-                                </span>
-                                <span
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        results.document_integrity === 'UNCHANGED'
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : results.document_integrity === 'TAMPERED'
-                                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {results.document_integrity}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.document_integrity === 'UNCHANGED'
-                                    ? 'Mã băm SHA-256 của PDF khớp hoàn toàn với bản tóm lược đã ký.'
-                                    : results.document_integrity === 'TAMPERED'
-                                    ? 'PDF đã bị thay đổi (sai khác SHA-256 so với giá trị trong chữ ký).'
-                                    : 'Chưa có thông tin băm đối chiếu.'}
-                            </p>
-                        </div>
-                    </div>
+            {results.certificate_binding && <section className="bg-white border rounded-xl p-5 space-y-3" aria-label="Chứng chỉ và danh tính">
+                <h3 className="font-semibold">Chứng chỉ và danh tính</h3>
+                {results.certificate_binding === 'LEGACY_NO_CERTIFICATE_BINDING' ? <span className="ui-badge ui-badge-warning">Chưa gắn chứng chỉ</span> : <>
+                    <dl className="grid sm:grid-cols-2 gap-3 text-sm">{Object.entries({certificate_binding:'Chứng chỉ trong dữ liệu ký',certificate_chain:'CA tin cậy',certificate_validity:'Thời hạn',certificate_revocation:'Thu hồi',identity_binding:'Danh tính người ký',identity_assurance:'Mức đối chiếu danh tính'}).map(([key,label]) => {
+                        const value = results[key as keyof typeof results]; return <div key={key}><dt className="text-slate-500">{label}</dt><dd className="font-medium">{pkiLabels[String(value)] || String(value ?? 'UNKNOWN')}</dd></div>;
+                    })}</dl><p className="font-mono text-xs break-all">{results.certificate_sha256}</p>
 
-                    {/* 3. Key Ownership */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <Key className="w-4 h-4 text-slate-400" />
-                                    3. Quyền sở hữu khóa
-                                </span>
-                                <span
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        results.key_ownership === 'VERIFIED_POP'
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : results.key_ownership === 'UNVERIFIED'
-                                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {results.key_ownership}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.key_ownership === 'VERIFIED_POP'
-                                    ? 'Đã kiểm chứng Proof-of-Possession khi đăng ký khóa trên hệ thống.'
-                                    : results.key_ownership === 'UNVERIFIED' ? 'Chưa có bằng chứng PoP hệ thống gắn với khóa này.' : 'Chưa đủ bằng chứng để xác định khóa và PoP.'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* 4. Certificate Trust */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <Award className="w-4 h-4 text-slate-400" />
-                                    4. Chuỗi tin cậy chứng thư
-                                </span>
-                                <span
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        results.certificate_trust === 'TRUSTED_CA'
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {results.certificate_trust}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.certificate_trust === 'SELF_REGISTERED'
-                                    ? 'Khóa tự đăng ký bởi người dùng (Self-registered SPKI). Không dùng CA ủy quyền.'
-                                    : results.certificate_trust === 'TRUSTED_CA' ? 'Chuỗi chứng thư đã được kiểm tra bằng nguồn CA tin cậy.' : 'Chưa có bằng chứng khóa hoặc chuỗi chứng thư để đánh giá mức tin cậy.'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* 5. Revocation Status */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <AlertTriangle className="w-4 h-4 text-slate-400" />
-                                    5. Trạng thái thu hồi
-                                </span>
-                                <span
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        results.key_revocation_status === 'ACTIVE'
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : results.key_revocation_status === 'REVOKED'
-                                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                            : 'bg-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    {results.key_revocation_status}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.key_revocation_status === 'ACTIVE'
-                                    ? 'Khóa ký đang hoạt động bình thường, chưa ghi nhận thu hồi.'
-                                    : results.key_revocation_status === 'REVOKED'
-                                    ? `Khóa đã bị thu hồi${
-                                          results.revoked_at ? ` lúc ${new Date(results.revoked_at).toLocaleString('vi-VN')}` : ''
-                                      }.`
-                                    : 'Không thể tra cứu trạng thái thu hồi.'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* 6. Timestamp Evidence */}
-                    <div className="p-4 rounded-lg border bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                    <Clock className="w-4 h-4 text-slate-400" />
-                                    6. Bằng chứng thời gian
-                                </span>
-                                <span className="px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-800 border border-sky-300">
-                                    {results.timestamp_trust_level}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-600">
-                                {results.timestamp_trust_level === 'SERVER_RECORDED'
-                                    ? `Máy chủ ghi nhận: ${
-                                          results.server_recorded_at
-                                              ? new Date(results.server_recorded_at).toLocaleString('vi-VN')
-                                              : 'Có sẵn'
-                                      }.`
-                                    : results.timestamp_trust_level === 'DECLARED'
-                                    ? 'Thời gian ký tự khai báo trong manifest.'
-                                    : results.timestamp_trust_level === 'TRUSTED_TSA' ? 'Dấu thời gian từ nhà cung cấp TSA độc lập.' : 'Chưa có bằng chứng thời gian để đánh giá.'}
-                            </p>
-                            <p className="text-xs mt-1">Thời gian khai báo trong manifest: {results.declared_timestamp ? new Date(results.declared_timestamp).toLocaleString('vi-VN') : 'Không có'}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </>}
+            </section>}
+            <section className="ui-card ui-card-body">
+                <h4 className="font-semibold mb-5">Kết quả xác minh</h4>
+                <dl className="verification-dimensions">
+                    {([
+                        {label:'Chữ ký',value:results.cryptographic_validity,Icon:Lock,good:results.cryptographic_validity === 'VALID',bad:results.cryptographic_validity === 'INVALID'},
+                        {label:'Toàn vẹn tài liệu',value:results.document_integrity,Icon:FileCheck,good:results.document_integrity === 'UNCHANGED',bad:results.document_integrity === 'TAMPERED'},
+                        {label:'Sở hữu khóa',value:results.key_ownership,Icon:Key,good:results.key_ownership === 'VERIFIED_POP',bad:false},
+                        {label:'Tin cậy chứng chỉ',value:results.certificate_trust,Icon:Award,good:results.certificate_trust === 'TRUSTED_CA',bad:false},
+                        {label:'Trạng thái khóa',value:results.key_revocation_status,Icon:AlertTriangle,good:results.key_revocation_status === 'ACTIVE',bad:results.key_revocation_status === 'REVOKED'},
+                        {label:'Dấu thời gian',value:results.timestamp_status === 'INVALID' ? 'INVALID' : results.timestamp_trust_level,Icon:Clock,good:results.timestamp_trust_level === 'TRUSTED_TSA',bad:results.timestamp_status === 'INVALID'},
+                    ]).map(({label,value,Icon,good,bad}) => <div className="verification-dimension" key={label}>
+                        <dt><Icon size={17} />{label}</dt>
+                        <dd className={'ui-badge ' + (good ? 'ui-badge-success' : bad ? 'ui-badge-danger' : '')}>{value}</dd>
+                    </div>)}
+                </dl>
+                <dl className="ui-data mt-6 border-t border-slate-100 pt-5">
+                    <div><dt>Thời gian ký khai báo</dt><dd>{results.declared_timestamp ? new Date(results.declared_timestamp).toLocaleString('vi-VN') : 'Không có'}</dd></div>
+                    <div><dt>Thời gian xác minh</dt><dd>{new Date(results.verification_time).toLocaleString('vi-VN')}</dd></div>
+                    {results.server_recorded_at && <div><dt>Máy chủ ghi nhận</dt><dd>{new Date(results.server_recorded_at).toLocaleString('vi-VN')}</dd></div>}
+                    {results.trusted_timestamp && <div><dt>Thời gian TSA chứng thực</dt><dd>{new Date(results.trusted_timestamp).toLocaleString('vi-VN')}</dd></div>}
+                    {results.timestamp_authority && <div className="full-width"><dt>Đơn vị cấp dấu thời gian</dt><dd>{results.timestamp_authority}</dd></div>}
+                    {results.timestamp_scope === 'DOCSIGN_PRIVATE_TSA' && <div className="full-width"><dt>Phạm vi tin cậy dấu thời gian</dt><dd>TSA nội bộ DocSign — thời gian chứng thực chữ ký đã tồn tại; không phải thời điểm ký được bên thứ ba độc lập xác nhận.</dd></div>}
+                    {results.revoked_at && <div><dt>Đã thu hồi</dt><dd>{new Date(results.revoked_at).toLocaleString('vi-VN')}</dd></div>}
+                </dl>
+            </section>
 
             {/* SHA-256 Comparison & Avalanche Effect Panel */}
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
                     <h4 className="text-base font-bold text-slate-900 flex items-center gap-2">
                         <FileCode className="w-5 h-5 text-indigo-600" />
-                        Đối chiếu mã băm SHA-256 & Hiệu ứng thác đổ (Avalanche Effect)
+                        Mã băm tài liệu
                     </h4>
-                    <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                            results.document_integrity === 'UNCHANGED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : results.document_integrity === 'TAMPERED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
-                        }`}
-                    >
+                    <span className={`ui-badge ${results.document_integrity === 'UNCHANGED' ? 'ui-badge-success' : results.document_integrity === 'TAMPERED' ? 'ui-badge-danger' : 'ui-badge-warning'}`}>
                         {results.document_integrity === 'UNCHANGED' ? 'Trùng khớp 100%' : results.document_integrity === 'TAMPERED' ? 'Sai lệch mã băm' : 'Chưa đủ dữ liệu băm'}
                     </span>
                 </div>
 
                 {renderHashDiff()}
 
-                <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-                    SHA-256 có hiệu ứng thác đổ: một thay đổi nhỏ trong PDF thường làm nhiều ký tự digest thay đổi. Đối chiếu hash giúp phát hiện sai lệch nội dung; không xác nhận danh tính người ký hoặc bảo đảm chống mọi hình thức giả mạo.
-                </p>
+
             </div>
 
             {/* Technical Metadata & Cryptographic Parameters */}
-            <div className="bg-slate-50 rounded-xl border border-slate-200 p-5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
-                    Tham số kỹ thuật & Danh tính mật mã
-                </h4>
+            <div className="ui-card ui-card-body">
+                <h4 className="font-semibold mb-4">Chi tiết chữ ký</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                     <div>
                         <span className="text-slate-400 block">Thuật toán chữ ký:</span>
@@ -431,17 +270,15 @@ export const VerificationResultPanel: React.FC<VerificationResultPanelProps> = (
 
             {/* Actions: Download Verification Report JSON */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                <span className="text-xs text-slate-500">
-                    Báo cáo JSON ghi lại kết quả tại thời điểm kiểm tra; báo cáo chưa được ký số và không tự chứng minh chống sửa đổi.
-                </span>
+
                 <button
                     type="button"
                     onClick={handleDownloadReport}
                     disabled={downloadingReport}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                    className="ui-button ui-button-primary"
                 >
                     <Download className="w-4 h-4" />
-                    {downloadingReport ? 'Đang tạo báo cáo…' : 'Tải báo cáo JSON (Report)'}
+                    {downloadingReport ? 'Đang tạo báo cáo…' : 'Tải báo cáo JSON'}
                 </button>
             </div>
             {reportError && <p className="text-xs text-rose-600 text-right">{reportError}</p>}

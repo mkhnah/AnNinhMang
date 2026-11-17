@@ -30,10 +30,10 @@ describe('CreateShareModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Tạo Mã QR Chia Sẻ')).toBeInTheDocument();
+    expect(screen.getByText('Tạo liên kết chia sẻ')).toBeInTheDocument();
     expect(screen.getByText(/HopDongKinhDoanh.pdf/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Thời hạn hiệu lực:/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Ghi chú \/ Nhãn/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Nhãn liên kết')).toBeInTheDocument();
   });
 
   it('submits form with selected expiry and custom label', async () => {
@@ -62,7 +62,7 @@ describe('CreateShareModal Component', () => {
     });
 
     // Enter label
-    fireEvent.change(screen.getByLabelText(/Ghi chú \/ Nhãn/i), {
+    fireEvent.change(screen.getByLabelText('Nhãn liên kết'), {
       target: { value: 'Gửi đối tác ký' },
     });
 

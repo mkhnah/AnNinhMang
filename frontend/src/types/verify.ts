@@ -15,6 +15,19 @@ export type VerificationSummaryStatus =
     | 'REVOKED_KEY';
 
 export interface SixDimensionalResults {
+    timestamp_status?: 'ABSENT' | 'VALID' | 'INVALID';
+    timestamp_authority?: string | null;
+    timestamp_authority_fingerprint?: string | null;
+    timestamp_scope?: string | null;
+    timestamp_serial?: string | null;
+    certificate_binding?: string;
+    certificate_chain?: string;
+    certificate_validity?: string;
+    certificate_revocation?: string;
+    identity_binding?: string;
+    identity_assurance?: string;
+    trust_scope?: string;
+    certificate_sha256?: string | null;
     cryptographic_validity: CryptographicValidity;
     document_integrity: DocumentIntegrity;
     key_ownership: KeyOwnership;
@@ -52,6 +65,9 @@ export interface VerificationResultResponse {
 }
 
 export interface SignaturePackage {
+    timestamp_token_b64?: string | null;
+    certificate_pem?: string;
+    issuer_chain_pem?: string[];
     package_version: number;
     signature_format: string;
     manifest: SignedManifest;

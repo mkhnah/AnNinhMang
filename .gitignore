@@ -29,6 +29,7 @@ data/storage/documents/*
 *.enc
 *.key
 *.cert
+data/pki/
 
 # macOS
 .DS_Store

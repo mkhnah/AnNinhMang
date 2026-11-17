@@ -26,6 +26,7 @@ class PublicKey(Base):
     )
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
+    current_certificate_id = Column(String(36), nullable=True)
 
     __table_args__ = (
         CheckConstraint("length(fingerprint) = 64", name="check_fingerprint_length"),

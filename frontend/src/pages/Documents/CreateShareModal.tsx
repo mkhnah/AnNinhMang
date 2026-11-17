@@ -48,7 +48,7 @@ export function CreateShareModal({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
             <QrCode className="text-violet-600" size={24} />
-            <h2 className="text-lg font-bold text-slate-900">Tạo Mã QR Chia Sẻ</h2>
+            <h2 className="text-lg font-bold text-slate-900">Tạo liên kết chia sẻ</h2>
           </div>
           <button
             aria-label="Đóng"
@@ -59,10 +59,7 @@ export function CreateShareModal({
           </button>
         </div>
 
-        <p className="mt-2 text-xs text-slate-500">
-          Phát hành liên kết công khai cho <strong>{documentTitle}</strong> (Phiên bản {versionNo}).
-          Người nhận có thể quét QR để kiểm tra tính toàn vẹn và chữ ký số.
-        </p>
+
 
         {error && (
           <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800 border border-rose-200">
@@ -70,6 +67,7 @@ export function CreateShareModal({
           </div>
         )}
 
+        <p className="mt-3 text-sm font-medium break-words">{documentTitle} · Phiên bản {versionNo}</p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
             <label htmlFor="expiry-days" className="block text-xs font-semibold text-slate-700">
@@ -81,16 +79,16 @@ export function CreateShareModal({
               onChange={(e) => setDays(Number(e.target.value))}
               className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 focus:border-slate-800 focus:outline-none"
             >
-              <option value={1}>1 ngày (Chia sẻ nhanh)</option>
-              <option value={7}>7 ngày (Mặc định)</option>
+              <option value={1}>1 ngày</option>
+              <option value={7}>7 ngày</option>
               <option value={14}>14 ngày</option>
-              <option value={30}>30 ngày (Tối đa)</option>
+              <option value={30}>30 ngày</option>
             </select>
           </div>
 
           <div>
             <label htmlFor="share-label" className="block text-xs font-semibold text-slate-700">
-              Ghi chú / Nhãn (Tùy chọn):
+              Nhãn liên kết
             </label>
             <input
               id="share-label"
@@ -103,10 +101,7 @@ export function CreateShareModal({
             />
           </div>
 
-          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500">
-            Lưu ý: Hệ thống sẽ tự động xác minh lại chữ ký số và tệp PDF trước khi cấp mã thông báo.
-            Chỉ những phiên bản toàn vẹn mới được phát hành mã QR.
-          </div>
+
 
           <div className="flex justify-end gap-2 pt-2">
             <button

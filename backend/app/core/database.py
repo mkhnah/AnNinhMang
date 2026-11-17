@@ -11,6 +11,7 @@ from backend.app.core.config import settings
 def sqlite_constraints(connection, _):
     import sqlite3
     if isinstance(connection, sqlite3.Connection):
+        connection.create_function('unicode_casefold', 1, lambda value: value.casefold() if value else '', deterministic=True)
         cursor = connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA busy_timeout=5000")

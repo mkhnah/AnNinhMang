@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
 import { keysApi } from '../../api/keys';
 import { PublicKeyDto } from '../../types/key';
 import { generateRsaPssKeypair } from '../../crypto/keygen';
@@ -24,7 +25,6 @@ import {
     AlertTriangle,
     RefreshCw,
     Lock,
-    Info,
     X,
     CheckCircle2,
     HardDrive,
@@ -363,19 +363,11 @@ export const KeyManagement: React.FC = () => {
             {/* Header */}
             <div className="md:flex md:items-center md:justify-between mb-8">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                            Zero-Trust Client Cryptography
-                        </span>
-                        <span className="text-xs text-slate-500 font-medium">RSA-PSS 3072-bit</span>
-                    </div>
                     <h1 className="text-2xl font-bold leading-7 text-slate-900 sm:text-3xl sm:truncate mt-1 flex items-center gap-2">
                         <Key className="w-7 h-7 text-sky-600" />
-                        Quản lý Khóa Chữ Ký Số Cá Nhân
+                        Khóa ký của tôi
                     </h1>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Cặp khóa mật mã được sinh và bảo vệ hoàn toàn phía trình duyệt. Khóa bí mật (Private Key) không bao giờ chạm tới máy chủ.
-                    </p>
+
                 </div>
                 <div className="mt-4 flex md:mt-0 md:ml-4 gap-3">
                     <button
@@ -384,7 +376,7 @@ export const KeyManagement: React.FC = () => {
                         className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
                     >
                         <Upload className="w-4 h-4 mr-2 text-slate-500" />
-                        Khôi phục từ file (.pem.enc)
+                        Khôi phục khóa
                     </button>
                     <button
                         type="button"
@@ -397,19 +389,8 @@ export const KeyManagement: React.FC = () => {
                         className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
                     >
                         <Key className="w-4 h-4 mr-2" />
-                        Sinh Cặp Khóa Mới
+                        Tạo khóa mới
                     </button>
-                </div>
-            </div>
-
-            {/* Zero-Knowledge Security Notice Banner */}
-            <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 mb-8 flex items-start gap-3">
-                <Info className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-sky-900">
-                    <p className="font-semibold">Kiến trúc Zero-Knowledge & Bằng chứng sở hữu (Proof-of-Possession):</p>
-                    <p className="mt-0.5 text-sky-800">
-                        Hệ thống tuân thủ nguyên tắc Zero-Trust. Máy chủ chỉ lưu trữ Khóa Công khai (SPKI PEM) sau khi đã xác minh chữ ký Proof-of-Possession do Private Key của bạn tạo ra. Hãy sao lưu tệp mã hóa <code className="bg-sky-100 px-1 py-0.5 rounded text-sky-900 font-mono text-xs">.pem.enc</code> nếu bạn muốn ký tài liệu từ máy tính khác hoặc phòng ngừa trường hợp xóa cache trình duyệt.
-                    </p>
                 </div>
             </div>
 
@@ -430,7 +411,7 @@ export const KeyManagement: React.FC = () => {
                 <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                        <span className="text-sm font-medium">{successMessage}</span>
+                        <span className="text-sm font-medium">{successMessage} <Link to="/certificates" className="underline">Xem chứng chỉ đã cấp</Link></span>
                     </div>
                     <button onClick={() => setSuccessMessage(null)} className="text-emerald-500 hover:text-emerald-700">
                         <X className="w-4 h-4" />
@@ -443,7 +424,7 @@ export const KeyManagement: React.FC = () => {
             {localKeys.length > 0 && (
                 <section aria-label="Khóa trên thiết bị này" className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
                     <h2 className="font-semibold text-slate-900">Khóa trên thiết bị này</h2>
-                    <p className="mt-1 text-xs text-slate-600">Khóa riêng được giữ trên thiết bị. Khi mất kết nối, trạng thái máy chủ có thể đã thay đổi.</p>
+
                     <ul className="mt-3 space-y-3">{localKeys.map(key => {
                         const state = localState(key);
                         return <li key={key.fingerprint} className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
@@ -458,7 +439,7 @@ export const KeyManagement: React.FC = () => {
             <div className="bg-white shadow rounded-xl border border-slate-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
                     <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                        <span>Danh Sách Khóa Của Bạn</span>
+                        <span>Danh sách khóa</span>
                         <span className="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-bold">
                             {keys.length}
                         </span>
@@ -485,9 +466,7 @@ export const KeyManagement: React.FC = () => {
                             <Key className="w-6 h-6" />
                         </div>
                         <p className="font-medium text-slate-700">{serverAvailable === false ? 'Chưa tải được danh sách khóa từ máy chủ.' : 'Chưa có khóa chữ ký nào được đăng ký.'}</p>
-                        <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                            Nhấn nút "Sinh Cặp Khóa Mới" ở trên để tạo cặp khóa RSA-PSS 3072-bit đầu tiên của bạn.
-                        </p>
+
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -607,12 +586,12 @@ export const KeyManagement: React.FC = () => {
 
             {/* Modal: Generate Key */}
             {showGenModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div role="dialog" aria-modal="true" aria-label="Tạo khóa ký" className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                                 <Key className="w-5 h-5 text-sky-600" />
-                                Sinh Cặp Khóa RSA-PSS 3072-bit
+                                Tạo khóa ký
                             </h3>
                             <button
                                 onClick={() => !actionLoading && setShowGenModal(false)}
@@ -625,7 +604,7 @@ export const KeyManagement: React.FC = () => {
                         <form onSubmit={handleGenerateKey} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold text-slate-800 mb-2">
-                                    Chọn Chế độ Khóa (Security & Backup Mode):
+                                    Chế độ lưu khóa
                                 </label>
                                 <div className="space-y-3">
                                     <label
@@ -646,14 +625,12 @@ export const KeyManagement: React.FC = () => {
                                                     className="text-sky-600 focus:ring-sky-500"
                                                 />
                                                 <span className="font-medium text-slate-900 text-sm">
-                                                    Mode B — Cho phép sao lưu (Được đề xuất)
+                                                    Cho phép sao lưu
                                                 </span>
                                             </div>
                                             <Download className="w-4 h-4 text-sky-600" />
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-1 pl-6">
-                                            Khóa riêng được mã hóa bằng AES-256-GCM + PBKDF2 (600,000 vòng lặp) với mật khẩu của bạn và xuất thành tệp <code className="text-sky-700">.pem.enc</code> để lưu trữ an toàn.
-                                        </p>
+
                                     </label>
 
                                     <label
@@ -674,14 +651,11 @@ export const KeyManagement: React.FC = () => {
                                                     className="text-sky-600 focus:ring-sky-500"
                                                 />
                                                 <span className="font-medium text-slate-900 text-sm">
-                                                    Mode A — Non-extractable (Bất khả xuất)
+                                                    Chỉ dùng trên thiết bị này
                                                 </span>
                                             </div>
                                             <Lock className="w-4 h-4 text-slate-600" />
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-1 pl-6">
-                                            Khóa không thể xuất khỏi WebCrypto API. Lưu ý: Nếu bạn xóa dữ liệu duyệt web hoặc đổi máy tính, bạn sẽ không thể khôi phục lại khóa này!
-                                        </p>
                                     </label>
                                 </div>
                             </div>
@@ -690,7 +664,7 @@ export const KeyManagement: React.FC = () => {
                                 <div className="space-y-3 pt-2 border-t border-slate-100">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Mật khẩu bảo vệ bản sao lưu (Passphrase):
+                                            Mật khẩu bản sao lưu
                                         </label>
                                         <input
                                             type="password"
@@ -704,7 +678,7 @@ export const KeyManagement: React.FC = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                            Xác nhận lại mật khẩu:
+                                            Xác nhận mật khẩu
                                         </label>
                                         <input
                                             type="password"
@@ -736,10 +710,10 @@ export const KeyManagement: React.FC = () => {
                                     {actionLoading ? (
                                         <>
                                             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                            Đang sinh khóa & Ký PoP...
+                                            Đang tạo khóa…
                                         </>
                                     ) : (
-                                        'Tạo & Đăng Ký Khóa'
+                                        'Tạo khóa'
                                     )}
                                 </button>
                             </div>
@@ -750,12 +724,12 @@ export const KeyManagement: React.FC = () => {
 
             {/* Modal: Restore Key */}
             {showRestoreModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div role="dialog" aria-modal="true" aria-label="Khôi phục khóa" className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                                 <Upload className="w-5 h-5 text-sky-600" />
-                                Khôi Phục Khóa Từ Bản Sao Lưu (.pem.enc)
+                                Khôi phục khóa
                             </h3>
                             <button
                                 onClick={() => !actionLoading && setShowRestoreModal(false)}
@@ -793,9 +767,7 @@ export const KeyManagement: React.FC = () => {
                                 />
                             </div>
 
-                            <p className="text-xs text-slate-500">
-                                Hệ thống sẽ giải mã bằng AES-256-GCM, xác minh tính toàn vẹn (AAD + Auth Tag) và kiểm tra đối chiếu fingerprint trước khi nạp vào IndexedDB của trình duyệt.
-                            </p>
+
 
                             <div className="pt-4 flex justify-end gap-3">
                                 <button
@@ -828,7 +800,7 @@ export const KeyManagement: React.FC = () => {
 
             {/* Modal: Confirm Revocation */}
             {keyToRevoke && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div role="dialog" aria-modal="true" aria-label="Thu hồi khóa" className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
                         <div className="flex items-center gap-3 mb-4 text-rose-600">
                             <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">

@@ -13,11 +13,12 @@ export const signaturesApi = {
     prepareSign: async (
         documentId: string,
         versionId: string,
-        keyId: string
+        keyId: string,
+        certificateId?: string
     ): Promise<PrepareSignResponse> => {
         const response = await api.post<PrepareSignResponse>(
             `/documents/${documentId}/versions/${versionId}/prepare-sign`,
-            { key_id: keyId }
+            { key_id: keyId, ...(certificateId ? {certificate_id:certificateId} : {}) }
         );
         return response.data;
     },

@@ -40,6 +40,16 @@ const mockValidResult: PublicShareResult = {
 };
 
 let navigateFn: (to: string) => void;
+it('displays verified internal TSA evidence on the public share', async () => {
+  vi.mocked(sharesApi.publicVerify).mockResolvedValue({...mockValidResult, results:{...mockValidResult.results,
+    results:{...mockValidResult.results.results, timestamp_trust_level:'TRUSTED_TSA', timestamp_status:'VALID',
+      trusted_timestamp:'2026-11-17T10:00:00Z', timestamp_scope:'DOCSIGN_PRIVATE_TSA'}}});
+  renderWithToken(TOKEN_A);
+  expect(await screen.findByText('Đã xác minh TSA')).toHaveClass('text-emerald-700');
+  expect(screen.getByText('Thời gian TSA chứng thực')).toBeInTheDocument();
+  expect(screen.getByText('TSA nội bộ DocSign')).toBeInTheDocument();
+});
+
 function NavHelper() {
   const navigate = useNavigate();
   navigateFn = navigate;
@@ -81,12 +91,13 @@ describe('PublicShare Component Lifecycle & Stale Response Prevention', () => {
     expect(screen.getAllByText(/Khóa tự đăng ký/)[0]).toBeInTheDocument();
     expect(screen.getByText(/Khóa hiện đang hoạt động/)).toBeInTheDocument();
     expect(screen.getByText(mockValidResult.signer_fingerprint!)).toBeInTheDocument();
+    expect(screen.getByText('Đã xác minh')).toBeInTheDocument();
 
     // Zero PDF leakage check
     expect(screen.queryByRole('button', { name: /Tải PDF/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Zero PDF Leakage/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Tải PDF/i })).not.toBeInTheDocument();
     expect(screen.getByText('Thời điểm ký khai báo:')).toBeInTheDocument();
-    expect(screen.getByText(/chưa được TSA chứng thực/)).toBeInTheDocument();
+    expect(screen.queryByText('TRUSTED_TSA')).not.toBeInTheDocument();
   });
 
   it('displays 404 error when token is invalid or revoked', async () => {
@@ -188,13 +199,13 @@ describe('Explicit verification states', () => {
     } as PublicShareResult);
     renderWithToken(TOKEN_A);
     expect(await screen.findByText(label)).toBeInTheDocument();
-    expect(screen.queryByText('Tài liệu nguyên bản và chữ ký số hợp lệ theo bằng chứng máy chủ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Đã xác minh')).not.toBeInTheDocument();
   });
   it.each(['INCONSISTENT', 'NOT_APPLICABLE'])('shows evidence %s without overall success', async state => {
     vi.mocked(sharesApi.publicVerify).mockResolvedValue({...mockValidResult,
       results: {...mockValidResult.results, evidence_consistency: state}});
     renderWithToken(TOKEN_A);
     expect(await screen.findByText(state === 'INCONSISTENT' ? 'Bằng chứng không nhất quán' : 'Chưa đủ bằng chứng')).toBeInTheDocument();
-    expect(screen.queryByText('Tài liệu nguyên bản và chữ ký số hợp lệ theo bằng chứng máy chủ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Đã xác minh')).not.toBeInTheDocument();
   });
 });

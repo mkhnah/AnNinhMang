@@ -25,7 +25,7 @@ class Signature(Base):
         UniqueConstraint("version_id", name="uq_signature_version"),
         CheckConstraint("length(manifest_sha256) = 64", name="check_sig_manifest_sha256_length"),
         CheckConstraint("algorithm IN ('RSA-PSS-3072', 'ECDSA-P256')", name="check_sig_algorithm"),
-        CheckConstraint("signature_format = 'DETACHED_JCS_V1'", name="check_sig_format"),
+        CheckConstraint("signature_format IN ('DETACHED_JCS_V1', 'DETACHED_JCS_V2')", name="check_sig_format"),
     )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

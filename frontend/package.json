@@ -10,6 +10,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@peculiar/x509": "3.1.0",
     "axios": "^1.6.8",
     "canonicalize": "^5.1.0",
     "lucide-react": "^0.359.0",
@@ -17,7 +18,8 @@
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^6.22.3",
+    "reflect-metadata": "0.2.2"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",

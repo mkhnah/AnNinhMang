@@ -14,11 +14,11 @@ export async function signManifest(
 ): Promise<string> {
     validateSignedManifest(manifest);
     // 1. Strict schema and context validation
-    if (!manifest || manifest.manifest_version !== 1) {
-        throw new Error('Phiên bản manifest không hợp lệ (yêu cầu version 1).');
+    if (!manifest || (manifest.manifest_version !== 1 && manifest.manifest_version !== 2)) {
+        throw new Error('Phiên bản manifest không hợp lệ.');
     }
 
-    if (manifest.signing_context !== 'DOCSIGN_DOCUMENT_SIGNATURE_V1') {
+    if (manifest.signing_context !== `DOCSIGN_DOCUMENT_SIGNATURE_V${manifest.manifest_version}`) {
         throw new Error('Signing context không hợp lệ. Từ chối ký ngoài ngữ cảnh quy định.');
     }
 

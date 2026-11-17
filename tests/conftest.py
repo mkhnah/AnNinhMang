@@ -13,6 +13,8 @@ TEST_DB_PATH = str(Path(_TEST_DIRECTORY.name) / "test.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "false"
+os.environ["PKI_ENABLED"] = "false"
+os.environ["TSA_ENABLED"] = "false"
 
 from backend.app.core.config import settings
 from backend.app.core.database import Base, get_db

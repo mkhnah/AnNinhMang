@@ -33,6 +33,16 @@ class ShareListItem(BaseModel):
 
 class PublicVerificationDimensions(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    trusted_timestamp: datetime | None = None
+    timestamp_status: str = 'ABSENT'
+    timestamp_scope: str | None = None
+    certificate_binding: str = 'LEGACY_NO_CERTIFICATE_BINDING'
+    certificate_chain: str = 'UNKNOWN'
+    certificate_validity: str = 'UNKNOWN'
+    certificate_revocation: str = 'UNKNOWN'
+    identity_binding: str = 'UNKNOWN'
+    identity_assurance: str = 'UNKNOWN'
+    trust_scope: str = 'SELF_REGISTERED'
     cryptographic_validity: str
     document_integrity: str
     key_ownership: str

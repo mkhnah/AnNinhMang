@@ -14,10 +14,12 @@ export const verifyApi = {
         pdfFile: File,
         packageFile?: File | null,
         packageJson?: string | null,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        certificateFile?: File | null
     ): Promise<VerificationResultResponse> => {
         const formData = new FormData();
         formData.append('file', pdfFile);
+        if (certificateFile) formData.append('certificate_file', certificateFile);
 
         if (packageFile) {
             formData.append('package_file', packageFile);

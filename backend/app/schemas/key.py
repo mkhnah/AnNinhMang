@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
+from backend.app.schemas.certificate import CertificateResponse
 
 
 class ChallengeCreateRequest(BaseModel):
@@ -43,6 +44,7 @@ class ChallengeResponse(BaseModel):
 
 
 class KeyRegisterRequest(BaseModel):
+    idempotency_key: str | None = Field(None, min_length=16, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
     public_key_pem: str = Field(..., description="Khóa công khai ở định dạng SPKI PEM")
     algorithm: str = Field(..., description="Thuật toán sử dụng")
     challenge_id: str = Field(..., description="ID của signing challenge đã được cấp")
@@ -66,6 +68,8 @@ class KeyRegisterRequest(BaseModel):
 
 
 class PublicKeyResponse(BaseModel):
+    current_certificate_id: str | None = None
+    certificate: CertificateResponse | None = None
     id: str
     algorithm: str
     fingerprint: str

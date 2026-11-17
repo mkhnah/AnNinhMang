@@ -17,12 +17,15 @@ from backend.app.models.enums import KeyStatus
 from backend.app.models.key import PublicKey
 from backend.app.models.user import User
 from backend.app.models.signature import Signature
+from backend.app.models.timestamp import SignatureTimestamp
 from backend.app.models.verification import VerificationEvent
 from backend.app.services.audit_service import append_audit, log_access_denied
-from backend.app.schemas.signature import SignedManifest
+from backend.app.schemas.signature import SignedManifest, parse_manifest
+from backend.app.models.certificate import Certificate, CertificateAuthority, SignatureCertificateBinding
+from backend.app.services.pki_verification import inspect_certificate
 from backend.app.schemas.verify import (
     CertificateTrust, CryptographicValidity, DocumentIntegrity, KeyOwnership,
-    KeyRevocationStatus, SignaturePackage, SixDimensionalResults, TimestampTrustLevel,
+    KeyRevocationStatus, SignaturePackage, SignaturePackageV2, parse_package, SixDimensionalResults, TimestampTrustLevel,
     VerificationMode, VerificationReportResponse, VerificationReportResult, VerificationResultResponse, VerificationSummaryStatus,
 )
 from backend.app.services.pdf_validator import validate_pdf
@@ -70,8 +73,27 @@ class VerificationService:
     @staticmethod
     def _evaluate_six_dimensions(db, manifest_dict, signature_b64, public_key_pem,
                                  computed_pdf_sha256, verification_mode,
-                                 server_signed_at=None, key_record=None):
+                                 server_signed_at=None, key_record=None, certificate_pem=None, roots=None, timestamp_token_b64=None):
         warnings = []
+        is_v2 = manifest_dict.get('manifest_version') == 2
+        cert_result = None
+        if is_v2:
+            cert_result = inspect_certificate(db, certificate_pem or '', roots=roots,
+                expected_user=manifest_dict.get('signer_user_id'), expected_fingerprint=manifest_dict.get('certificate_sha256'))
+            try:
+                from cryptography import x509
+                cert_public = x509.load_pem_x509_certificate(certificate_pem.encode()).public_key()
+                cert_spki = cert_public.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+                if public_key_pem is not None and get_spki_fingerprint(parse_profile(public_key_pem)) != get_spki_fingerprint(cert_public):
+                    cert_result['certificate_binding'] = 'MISMATCH'
+                public_key_pem = cert_spki
+                if db is not None:
+                    cert_record = db.scalar(select(Certificate).where(Certificate.fingerprint == cert_result['fingerprint']))
+                    if cert_record is not None and cert_record.key_id != manifest_dict.get('key_id'):
+                        cert_result['certificate_binding'] = 'MISMATCH'
+            except Exception:
+                cert_result['certificate_binding'] = 'MISMATCH'
+                public_key_pem = None
         expected = manifest_dict.get("document_sha256")
         integrity = DocumentIntegrity.UNKNOWN
         if computed_pdf_sha256 and expected:
@@ -141,20 +163,50 @@ class VerificationService:
             revocation = KeyRevocationStatus.REVOKED if registry.status == KeyStatus.REVOKED or revoked_at is not None else KeyRevocationStatus.ACTIVE
             if revocation == KeyRevocationStatus.REVOKED:
                 warnings.append("KEY_REVOKED: Current revocation does not establish when the signature was created")
-        warnings.append("IDENTITY_NOT_CA_VERIFIED: Mathematical validity and registry PoP do not establish legal identity")
-        warnings.append("NO_TRUSTED_TIMESTAMP: No TSA evidence; declared signing time is not proven creation time")
+        if not is_v2:
+            warnings.append("LEGACY_NO_CERTIFICATE_BINDING: This v1 signature has no signed certificate reference")
+            warnings.append("IDENTITY_NOT_CA_VERIFIED: Mathematical validity and registry PoP do not establish legal identity")
+        elif cert_result:
+            trust = CertificateTrust.TRUSTED_CA if cert_result['certificate_chain'] == 'VALID' else CertificateTrust.UNKNOWN
+            for field, valid in [('certificate_binding','MATCHED'), ('certificate_chain','VALID'),
+                ('certificate_validity','VALID'), ('certificate_revocation','ACTIVE'), ('identity_binding','MATCHED')]:
+                if cert_result[field] != valid:
+                    warnings.append(f"{field.upper()}_{cert_result[field]}: Private CA policy check failed or unavailable")
+        timestamp = None
+        timestamp_status = 'ABSENT'
+        if timestamp_token_b64 is not None:
+            try:
+                from backend.app.services.timestamp_service import verify_timestamp
+                timestamp = verify_timestamp(timestamp_token_b64, signature_b64, db)
+                if crypto != CryptographicValidity.VALID:
+                    raise ValueError('Document signature is invalid')
+                timestamp_status = 'VALID'
+            except Exception:
+                timestamp = None
+                timestamp_status = 'INVALID'
+                warnings.append('TIMESTAMP_INVALID: TSA token failed signature, imprint, time or trust validation')
+        if timestamp is None:
+            warnings.append("NO_TRUSTED_TIMESTAMP: No verified TSA evidence; declared signing time is not proven creation time")
         declared = manifest_dict.get("signing_timestamp")
         declared_date = datetime.fromisoformat(declared.replace("Z", "+00:00")) if declared else None
         recorded = server_signed_at if verification_mode == VerificationMode.INTERNAL else None
         if recorded is not None:
             recorded = recorded.replace(tzinfo=timezone.utc) if recorded.tzinfo is None else recorded.astimezone(timezone.utc)
         dims = SixDimensionalResults(
+            timestamp_status=timestamp_status,
+            timestamp_authority=timestamp['authority'] if timestamp else None,
+            timestamp_authority_fingerprint=timestamp['fingerprint'] if timestamp else None,
+            timestamp_serial=timestamp['serial'] if timestamp else None,
+            timestamp_scope=timestamp['scope'] if timestamp else None,
+            **({name: cert_result[name] for name in ('certificate_binding', 'certificate_chain', 'certificate_validity',
+                'certificate_revocation', 'identity_binding', 'identity_assurance', 'trust_scope')} if cert_result else {}),
+            certificate_sha256=cert_result.get('fingerprint') if cert_result else None,
             cryptographic_validity=crypto, document_integrity=integrity, key_ownership=ownership,
             certificate_trust=trust, key_revocation_status=revocation, revoked_at=revoked_at,
             revocation_checked_at=datetime.now(timezone.utc) if matched else None,
             revocation_source=source, declared_timestamp=declared_date, server_recorded_at=recorded,
-            server_timestamp=recorded, verification_time=datetime.now(timezone.utc), trusted_timestamp=None,
-            timestamp_trust_level=TimestampTrustLevel.SERVER_RECORDED if recorded else (TimestampTrustLevel.DECLARED if declared_date else TimestampTrustLevel.UNKNOWN),
+            server_timestamp=recorded, verification_time=datetime.now(timezone.utc), trusted_timestamp=timestamp['time'] if timestamp else None,
+            timestamp_trust_level=TimestampTrustLevel.TRUSTED_TSA if timestamp else (TimestampTrustLevel.SERVER_RECORDED if recorded else (TimestampTrustLevel.DECLARED if declared_date else TimestampTrustLevel.UNKNOWN)),
             key_registry_binding=binding,
         )
         return dims, warnings, fingerprint, key_id
@@ -165,10 +217,16 @@ class VerificationService:
             return VerificationSummaryStatus.SIGNATURE_INVALID
         if dims.document_integrity == DocumentIntegrity.TAMPERED:
             return VerificationSummaryStatus.INTEGRITY_COMPROMISED
+        if dims.timestamp_status == 'INVALID':
+            return VerificationSummaryStatus.UNVERIFIABLE
         if dims.key_registry_binding == "MISMATCH":
             return VerificationSummaryStatus.UNVERIFIABLE
         if dims.key_revocation_status == KeyRevocationStatus.REVOKED:
             return VerificationSummaryStatus.REVOKED_KEY
+        if dims.certificate_binding != 'LEGACY_NO_CERTIFICATE_BINDING' and not all((
+            dims.certificate_binding == 'MATCHED', dims.certificate_chain == 'VALID',
+            dims.certificate_validity == 'VALID', dims.certificate_revocation == 'ACTIVE', dims.identity_binding == 'MATCHED')):
+            return VerificationSummaryStatus.UNVERIFIABLE
         if dims.cryptographic_validity == CryptographicValidity.VALID and dims.document_integrity == DocumentIntegrity.UNCHANGED:
             return VerificationSummaryStatus.VERIFIED
         return VerificationSummaryStatus.UNVERIFIABLE
@@ -188,7 +246,7 @@ class VerificationService:
 
     @staticmethod
     def _consistent_manifest(version, sig, key, user_id):
-        manifest = SignedManifest.model_validate(parse_strict_json(sig.canonical_manifest_json))
+        manifest = parse_manifest(parse_strict_json(sig.canonical_manifest_json))
         canonical = canonicalize_jcs(manifest.model_dump())
         if canonical != sig.canonical_manifest_json.encode("utf-8"):
             raise ValueError("EVIDENCE_NONCANONICAL")
@@ -203,14 +261,31 @@ class VerificationService:
         public = parse_profile(key.spki_pem)
         if manifest.signer_fingerprint != key.fingerprint or key.fingerprint != get_spki_fingerprint(public):
             raise ValueError("EVIDENCE_FINGERPRINT_MISMATCH")
-        if manifest.algorithm != sig.algorithm or sig.algorithm != key.algorithm or sig.signature_format != "DETACHED_JCS_V1":
+        if (manifest.algorithm != sig.algorithm or sig.algorithm != key.algorithm
+                or sig.signature_format != f"DETACHED_JCS_V{manifest.manifest_version}"):
             raise ValueError("EVIDENCE_PROFILE_MISMATCH")
+        if manifest.manifest_version == 2 and manifest.signer_user_id != user_id:
+            raise ValueError('EVIDENCE_IDENTITY_MISMATCH')
         if manifest.document_sha256 != version.file_sha256:
             raise ValueError("EVIDENCE_DOCUMENT_HASH_MISMATCH")
         # Strict signature encoding/profile also applies to retained DB evidence.
-        SignaturePackage(package_version=1, signature_format=sig.signature_format, manifest=manifest,
-                         signature_b64=sig.signature_b64, public_key_spki_pem=key.spki_pem)
+        # Encoding is checked for both versions without constructing a different manifest.
+        SignaturePackage.canonical_signature(sig.signature_b64)
         return manifest
+
+    @staticmethod
+    def _certificate_evidence(db, sig, manifest):
+        if manifest.get('manifest_version') != 2:
+            return None, None
+        binding = db.get(SignatureCertificateBinding, sig.id)
+        cert = db.get(Certificate, binding.certificate_id) if binding is not None else None
+        if (cert is None or binding.certificate_sha256 != manifest['certificate_sha256']
+                or cert.fingerprint != binding.certificate_sha256 or cert.key_id != sig.key_id or cert.user_id != sig.signer_id):
+            raise ValueError('EVIDENCE_CERTIFICATE_MISMATCH')
+        root = db.get(CertificateAuthority, cert.ca_id)
+        if root is None:
+            raise ValueError('EVIDENCE_ISSUER_MISSING')
+        return cert.certificate_pem, [root.certificate_pem]
 
     @staticmethod
     def _finish(db, result, actor_id=None, document_id=None, issue_receipt=True):
@@ -246,9 +321,11 @@ class VerificationService:
         version, sig, key = cls._owned_evidence(db, user_id, document_id, version_id)
         try:
             manifest = cls._consistent_manifest(version, sig, key, user_id).model_dump()
+            certificate_pem, roots = cls._certificate_evidence(db, sig, manifest)
             consistent = True
         except (ValueError, TypeError, UnicodeError, RecursionError):
             manifest = {}
+            certificate_pem, roots = None, None
             consistent = False
         computed = ""
         try:
@@ -259,13 +336,14 @@ class VerificationService:
             pass
         dims, warnings, fp, key_id = cls._evaluate_six_dimensions(db if consistent else None, manifest,
             sig.signature_b64 if consistent else "", key.spki_pem if consistent else None, computed,
-            VerificationMode.INTERNAL, sig.signed_at if consistent else None, key if consistent else None)
+            VerificationMode.INTERNAL, sig.signed_at if consistent else None, key if consistent else None, certificate_pem, roots,
+            cls._timestamp_evidence(db, sig) if consistent else None)
         if not consistent:
             warnings.insert(0, "EVIDENCE_INCONSISTENT: Stored evidence failed strict schema/canonical/hash/binding/profile validation")
         result = VerificationResultResponse(verification_id=str(uuid.uuid4()), verification_mode=VerificationMode.INTERNAL,
             summary_status=cls._determine_summary_status(dims), results=dims, document_version_id=version.id,
             document_hash_expected=manifest.get("document_sha256", ""), document_hash_computed=computed,
-            signer_fingerprint=fp, key_id=key_id, signature_algorithm="RSA-PSS-3072", signature_format="DETACHED_JCS_V1",
+            signer_fingerprint=fp, key_id=key_id, signature_algorithm="RSA-PSS-3072", signature_format=sig.signature_format,
             warnings=warnings, warning_codes=[w.split(":",1)[0] for w in warnings],
             evidence_consistency="CONSISTENT" if consistent else "INCONSISTENT")
         return cls._finish(db, result, user_id, document_id)
@@ -276,9 +354,11 @@ class VerificationService:
         key = db.scalar(select(PublicKey).where(PublicKey.id == sig.key_id))
         try:
             manifest = cls._consistent_manifest(version, sig, key, sig.signer_id).model_dump()
+            certificate_pem, roots = cls._certificate_evidence(db, sig, manifest)
             consistent = True
         except (ValueError, TypeError, UnicodeError, RecursionError):
             manifest = {}
+            certificate_pem, roots = None, None
             consistent = False
         computed = ""
         pre_warnings = []
@@ -296,6 +376,8 @@ class VerificationService:
             VerificationMode.INDEPENDENT_DETACHED,
             None,
             key if consistent else None,
+            certificate_pem, roots,
+            cls._timestamp_evidence(db, sig) if consistent else None,
         )
         warnings = pre_warnings + warnings
         if not consistent:
@@ -311,7 +393,7 @@ class VerificationService:
             signer_fingerprint=fingerprint,
             key_id=None,
             signature_algorithm="RSA-PSS-3072",
-            signature_format="DETACHED_JCS_V1",
+            signature_format=sig.signature_format,
             warnings=warnings,
             warning_codes=[warning.split(":", 1)[0] for warning in warnings],
             evidence_consistency="CONSISTENT" if consistent else "INCONSISTENT",
@@ -322,7 +404,7 @@ class VerificationService:
         return result
 
     @classmethod
-    def verify_independent_package(cls, db, pdf_stream, pdf_filename, package_json_str, client_ip=None):
+    def verify_independent_package(cls, db, pdf_stream, pdf_filename, package_json_str, client_ip=None, certificate_override=None):
         # HTTP rate/body/concurrency guards run in middleware before multipart parsing.
         if len(package_json_str.encode("utf-8")) > settings.VERIFY_MAX_PACKAGE_BYTES:
             raise HTTPException(413, "Signature package exceeds limit")
@@ -331,9 +413,13 @@ class VerificationService:
         except (ValueError, RecursionError):
             raise HTTPException(400, "Invalid JSON syntax, values or duplicate keys (khóa trùng lặp)")
         try:
-            pkg = SignaturePackage.model_validate(raw)
+            pkg = parse_package(raw)
         except ValueError:
             raise HTTPException(422, "Invalid signature package schema/profile/encoding")
+        if certificate_override is not None:
+            if pkg.package_version != 2:
+                raise HTTPException(422, 'Legacy v1 signature has no certificate binding')
+            pkg.certificate_pem = certificate_override
         # UploadFile is a SpooledTemporaryFile. fileno() rolls it to disk without reading it all into RAM.
         import tempfile
         temp = None
@@ -358,7 +444,8 @@ class VerificationService:
                 temp.close()
         manifest = pkg.manifest.model_dump()
         dims, warnings, fp, key_id = cls._evaluate_six_dimensions(db, manifest, pkg.signature_b64,
-            pkg.public_key_spki_pem, computed, VerificationMode.INDEPENDENT_DETACHED)
+            pkg.public_key_spki_pem, computed, VerificationMode.INDEPENDENT_DETACHED,
+            certificate_pem=getattr(pkg, 'certificate_pem', None), roots=getattr(pkg, 'issuer_chain_pem', None), timestamp_token_b64=pkg.timestamp_token_b64)
         result = VerificationResultResponse(verification_id=str(uuid.uuid4()), verification_mode=VerificationMode.INDEPENDENT_DETACHED,
             summary_status=cls._determine_summary_status(dims), results=dims,
             document_version_id=manifest["document_version_id"], document_hash_expected=manifest["document_sha256"],
@@ -372,10 +459,22 @@ class VerificationService:
         version, sig, key = cls._owned_evidence(db, user_id, document_id, version_id)
         try:
             manifest = cls._consistent_manifest(version, sig, key, user_id)
+            certificate_pem, roots = cls._certificate_evidence(db, sig, manifest.model_dump())
         except (ValueError, TypeError, UnicodeError, RecursionError):
             raise HTTPException(409, "EVIDENCE_INCONSISTENT: Cannot export corrupted evidence")
+        if manifest.manifest_version == 2:
+            return SignaturePackageV2(package_version=2, signature_format='DETACHED_JCS_V2', manifest=manifest,
+                signature_b64=sig.signature_b64, public_key_spki_pem=key.spki_pem,
+                certificate_pem=certificate_pem, issuer_chain_pem=roots, created_at=datetime.now(timezone.utc),
+                timestamp_token_b64=cls._timestamp_evidence(db, sig))
         return SignaturePackage(package_version=1, signature_format="DETACHED_JCS_V1", manifest=manifest,
-            signature_b64=sig.signature_b64, public_key_spki_pem=key.spki_pem, created_at=datetime.now(timezone.utc))
+            signature_b64=sig.signature_b64, public_key_spki_pem=key.spki_pem, created_at=datetime.now(timezone.utc),
+            timestamp_token_b64=cls._timestamp_evidence(db, sig))
+
+    @staticmethod
+    def _timestamp_evidence(db, sig):
+        evidence = db.get(SignatureTimestamp, sig.id)
+        return evidence.token_b64 if evidence else None
 
     @staticmethod
     def generate_verification_report(receipt_id, db=None, user_id=None):

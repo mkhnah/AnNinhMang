@@ -1,184 +1,37 @@
-import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ShieldCheck, FileText, KeyRound, BadgeCheck, ScanLine, LayoutDashboard, LogOut, Menu, X, UserRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, User as UserIcon, LogOut, ShieldAlert, FileText, Key } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+export function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
-  const isActive = (path: string) => location.pathname === path;
-
-  return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Logo & Main Nav */}
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center text-white shadow-sm">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="font-bold text-lg text-slate-900 tracking-tight">DocSign</span>
-                <span className="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  v1.0 Native
-                </span>
-              </div>
-            </Link>
-
-            {user && (
-              <div className="hidden md:flex items-center gap-1">
-                <Link
-                  to="/"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/')
-                      ? 'bg-sky-50 text-sky-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <FileText className="w-4 h-4" />
-                    Tài liệu
-                  </span>
-                </Link>
-
-                <Link
-                  to="/keys"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/keys')
-                      ? 'bg-sky-50 text-sky-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Key className="w-4 h-4" />
-                    Quản lý Khóa
-                  </span>
-                </Link>
-
-                <Link
-                  to="/verify"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/verify')
-                      ? 'bg-sky-50 text-sky-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Xác minh
-                  </span>
-                </Link>
-
-                <Link
-                  to="/profile"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/profile')
-                      ? 'bg-sky-50 text-sky-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <UserIcon className="w-4 h-4" />
-                    Hồ sơ
-                  </span>
-                </Link>
-
-                {user.role === 'ADMIN' && (
-                  <Link
-                    to="/admin/dashboard"
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      location.pathname.startsWith('/admin')
-                        ? 'bg-purple-50 text-purple-700'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-purple-600" />
-                      Quản trị Admin
-                    </span>
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* User Status & Logout */}
-          <div className="flex items-center gap-4">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <div className="text-sm font-medium text-slate-900">{user.full_name}</div>
-                  <div className="text-xs text-slate-500">{user.email}</div>
-                </div>
-
-                <span
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                    user.role === 'ADMIN'
-                      ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                      : 'bg-sky-100 text-sky-800 border border-sky-200'
-                  }`}
-                >
-                  {user.role}
-                </span>
-
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-rose-600 p-2 rounded-md hover:bg-rose-50 transition-colors"
-                  title="Đăng xuất"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Thoát</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/verify"
-                  className={`text-sm font-medium px-3 py-2 rounded-md transition-colors ${
-                    isActive('/verify')
-                      ? 'bg-sky-50 text-sky-700 font-semibold'
-                      : 'text-slate-700 hover:text-sky-600'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Xác minh độc lập
-                  </span>
-                </Link>
-                <Link
-                  to="/login"
-                  className="text-sm font-medium text-slate-700 hover:text-sky-600 px-3 py-2 rounded-md transition-colors"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  className="text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
-                >
-                  Đăng ký
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {setOpen(false);}, [location.pathname]);
+  const links = [
+    ...(user ? [{to:'/', label:'Tài liệu', icon:FileText}, {to:'/keys', label:'Khóa ký', icon:KeyRound}, {to:'/certificates', label:'Chứng chỉ', icon:BadgeCheck}] : []),
+    {to:'/verify', label:'Xác minh', icon:ScanLine},
+    ...(user?.role === 'ADMIN' ? [{to:'/admin/dashboard', label:'Quản trị', icon:LayoutDashboard}] : []),
+  ];
+  const items = links.map(({to,label,icon:Icon}) => <NavLink key={to} to={to} end={to === '/'}
+    className={({isActive}) => 'app-nav-link ' + (isActive || (to === '/' && location.pathname.startsWith('/documents')) || (to === '/admin/dashboard' && location.pathname.startsWith('/admin')) ? 'is-active' : '')}>
+    <Icon size={18} aria-hidden="true" /><span>{label}</span>
+  </NavLink>);
+  const signOut = async () => {try {await logout(); navigate('/login');} catch {setError('Không thể đăng xuất.');}};
+  return <header className="app-header">
+    <div className="app-header-inner">
+      <Link to="/" className="app-brand" aria-label="DocSign"><span className="app-brand-icon"><ShieldCheck size={23}/></span>DocSign<span className="brand-dot">.</span></Link>
+      <nav className="app-desktop-nav" aria-label="Điều hướng chính">{items}</nav>
+      <div className="app-account">
+        {user ? <><Link to="/profile" className="app-profile" aria-label="Hồ sơ"><span className="app-avatar">{user.full_name?.charAt(0).toUpperCase() || <UserRound size={17}/>}</span><span className="app-account-name">{user.full_name}</span></Link>
+          <button onClick={() => {void signOut();}} className="icon-button" aria-label="Đăng xuất" title="Đăng xuất"><LogOut size={18}/></button></>
+          : <><Link to="/login" className="app-login">Đăng nhập</Link><Link to="/register" className="ui-button ui-button-primary app-register">Đăng ký</Link></>}
+        <button className="icon-button app-menu-toggle" aria-label={open ? 'Đóng menu' : 'Mở menu'} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>{open ? <X size={21}/> : <Menu size={21}/>}</button>
       </div>
-      {user?.role === 'ADMIN' && <div className="md:hidden flex gap-4 overflow-x-auto px-4 py-2 border-t border-slate-100 text-sm">
-        <Link to="/admin/dashboard" className="whitespace-nowrap text-sky-700 font-medium">Tổng quan an ninh</Link>
-        <Link to="/admin/audit" className="whitespace-nowrap text-slate-600">Nhật ký kiểm toán</Link>
-        <Link to="/admin" className="whitespace-nowrap text-slate-600">Tài khoản</Link>
-      </div>}
-    </nav>
-  );
-};
+    </div>
+    {open && <nav id="mobile-navigation" className="app-mobile-nav" aria-label="Điều hướng trên điện thoại">{items}{user && <NavLink to="/profile" className="app-nav-link"><UserRound size={18}/>Hồ sơ</NavLink>}</nav>}
+    {error && <p role="alert" className="ui-alert ui-alert-error">{error}</p>}
+  </header>;
+}

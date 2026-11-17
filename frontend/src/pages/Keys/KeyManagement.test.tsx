@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+const render = (ui: React.ReactNode) => rtlRender(ui, {wrapper: MemoryRouter});
 import { KeyManagement } from './KeyManagement';
 import { keysApi } from '../../api/keys';
 import * as keystore from '../../crypto/keyStorage';
@@ -133,9 +135,9 @@ describe('Phase 3 offline/retry release gates', () => {
             throw new Error('server unavailable after key generation');
         });
         render(<KeyManagement />);
-        fireEvent.click(screen.getByRole('button', { name: /Sinh Cặp Khóa Mới/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Tạo khóa mới' }));
         fireEvent.click(screen.getByDisplayValue('MODE_A_SECURE'));
-        fireEvent.click(screen.getByRole('button', { name: 'Tạo & Đăng Ký Khóa' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Tạo khóa' }));
         expect(await screen.findByText('REGISTRATION_FAILED')).toBeInTheDocument();
         expect(screen.getByRole('alert')).toHaveTextContent('server unavailable after key generation');
         expect((await keystore.getKeyFromKeystore(bundle.fingerprint))?.privateKey.type).toBe('private');

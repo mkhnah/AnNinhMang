@@ -39,7 +39,7 @@ beforeEach(async()=>{
 function mount(extra:Partial<typeof props>={}){return render(<StrictMode><MemoryRouter><SignModal {...props} {...extra}/></MemoryRouter></StrictMode>);}
 async function prepare(preview=true){
     if(preview) fireEvent.click(screen.getByText('Preview ready'));
-    const button=await screen.findByRole('button',{name:/Tiếp tục: Chuẩn bị/});
+    const button=await screen.findByRole('button',{name:'Tiếp tục'});
     await waitFor(()=>expect(button).toBeEnabled());fireEvent.click(button);
     await screen.findByRole('checkbox');
 }
@@ -103,7 +103,7 @@ describe('SignModal document binding and recovery',()=>{
     it('discards an in-flight preparation when the document changes',async()=>{
         let resolve!:(value:unknown)=>void;
         mocks.prepare.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));
-        const view=mount();const button=await screen.findByRole('button',{name:/Tiếp tục: Chuẩn bị/});await waitFor(()=>expect(button).toBeEnabled());fireEvent.click(button);
+        const view=mount();const button=await screen.findByRole('button',{name:'Tiếp tục'});await waitFor(()=>expect(button).toBeEnabled());fireEvent.click(button);
         view.rerender(<StrictMode><MemoryRouter><SignModal {...props} documentId="document-B" versionId="44444444-4444-4444-8444-444444444444"/></MemoryRouter></StrictMode>);
         resolve({manifest,manifest_sha256:await computeManifestSha256(manifest),expires_at:new Date(Date.now()+300000).toISOString()});
         await waitFor(()=>expect(button).toBeEnabled());expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();expect(mocks.sign).not.toHaveBeenCalled();

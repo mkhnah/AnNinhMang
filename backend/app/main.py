@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import settings
 from backend.app.api.v1 import auth, admin, documents, keys, signatures, verify, shares, audit, dashboard
+from backend.app.api.v1 import certificates, users
 
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
@@ -73,7 +74,7 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-Process-Time"] = f"{process_time:.4f}s"
 
     # FIX-P6-05: Ensure public share verification routes enforce no-store and no-referrer
-    if request.url.path.startswith("/api/v1/verify/share"):
+    if request.url.path.startswith(("/api/v1/verify", "/api/v1/certificates", "/api/v1/pki", "/api/v1/admin/pki")):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -89,6 +90,7 @@ async def security_headers_middleware(request: Request, call_next):
 
 # Include API Routers
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(keys.router, prefix="/api/v1")
@@ -98,6 +100,12 @@ app.include_router(shares.router, prefix="/api/v1")
 app.include_router(shares.public_router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(certificates.router, prefix="/api/v1")
+app.include_router(certificates.admin_router, prefix="/api/v1")
+from backend.app.api.v1 import pki
+app.include_router(pki.router, prefix="/api/v1")
+app.include_router(pki.admin_router, prefix="/api/v1")
+app.include_router(pki.public_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])

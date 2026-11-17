@@ -12,12 +12,14 @@ class UploadLimitMiddleware:
         if scope['type'] != 'http' or scope['method'] != 'POST':
             return await self.app(scope, receive, send)
         path = scope['path'].rstrip('/')
-        public = path == '/api/v1/verify/upload'
+        pki = path in {'/api/v1/verify/certificate', '/api/v1/verify/signature'}
+        public = path == '/api/v1/verify/upload' or pki
         report = path == '/api/v1/verify/report'
         document = path.startswith('/api/v1/documents')
-        if not (public or report or document):
+        private_pki = path.startswith(('/api/v1/pki/', '/api/v1/admin/pki/', '/api/v1/certificates/'))
+        if not (public or report or document or private_pki):
             return await self.app(scope, receive, send)
-        cap = settings.VERIFY_MAX_BODY_BYTES if public else (16384 if report else settings.MAX_UPLOAD_BYTES + 65536)
+        cap = 1500000 if pki else (settings.VERIFY_MAX_BODY_BYTES if public else (16384 if report or private_pki else settings.MAX_UPLOAD_BYTES + 65536))
         headers = dict(scope['headers'])
         try:
             length = int(headers.get(b'content-length', b'0'))

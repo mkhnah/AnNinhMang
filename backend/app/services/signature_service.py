@@ -18,8 +18,10 @@ from backend.app.models.document import Document, DocumentVersion, VersionState
 from backend.app.models.enums import KeyStatus
 from backend.app.models.key import PublicKey
 from backend.app.models.signature import Signature, SigningSession
+from backend.app.models.timestamp import SignatureTimestamp
 from backend.app.schemas.signature import (
     SignedManifest,
+    SignedManifestV2,
     PrepareSignRequest,
     PrepareSignResponse,
     SignatureSubmitRequest,
@@ -27,6 +29,9 @@ from backend.app.schemas.signature import (
 )
 from backend.app.storage.local import LocalStorageService
 from backend.app.services.audit_service import append_audit, log_access_denied
+from backend.app.core.config import settings
+from backend.app.models.certificate import CertificateAuthority, SignatureCertificateBinding
+from backend.app.services.pki_verification import signing_certificate
 
 
 def utc_now() -> datetime:
@@ -114,6 +119,8 @@ class SignatureService:
                 detail="Khóa công khai đã bị thu hồi (REVOKED). Không thể sử dụng để ký tài liệu mới."
             )
 
+        cert = signing_certificate(db, user_id, key.id, req.certificate_id) if settings.PKI_ENABLED else None
+
         # 5. Verify PDF file existence and disk SHA-256 integrity
         if not storage.exists(version.storage_key):
             raise HTTPException(
@@ -166,8 +173,8 @@ class SignatureService:
         signing_timestamp = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
         # 10. Construct Strict SignedManifest Schema v1.0
-        manifest = SignedManifest(
-            manifest_version=1,
+        manifest = (SignedManifestV2 if cert else SignedManifest)(
+            manifest_version=2 if cert else 1,
             document_version_id=version.id,
             document_sha256=version.file_sha256.lower(),
             key_id=key.id,
@@ -175,7 +182,8 @@ class SignatureService:
             algorithm=key.algorithm,
             signing_nonce=nonce,
             signing_timestamp=signing_timestamp,
-            signing_context="DOCSIGN_DOCUMENT_SIGNATURE_V1"
+            signing_context="DOCSIGN_DOCUMENT_SIGNATURE_V2" if cert else "DOCSIGN_DOCUMENT_SIGNATURE_V1",
+            **({"signer_user_id": user_id, "certificate_sha256": cert.fingerprint} if cert else {}),
         )
 
         # 11. Canonicalize Manifest via RFC 8785 JCS
@@ -203,6 +211,8 @@ class SignatureService:
             manifest=manifest,
             manifest_sha256=manifest_sha256,
             expires_at=expires_at
+            ,certificate_pem=cert.certificate_pem if cert else None,
+            issuer_certificate_pem=db.get(CertificateAuthority, cert.ca_id).certificate_pem if cert else None
         )
 
     @staticmethod
@@ -301,7 +311,13 @@ class SignatureService:
                 detail=f"Thuật toán manifest '{req.manifest.algorithm}' không khớp với khóa '{key.algorithm}'"
             )
 
-        if req.manifest.signing_context != "DOCSIGN_DOCUMENT_SIGNATURE_V1":
+        is_v2 = req.manifest.manifest_version == 2
+        if settings.PKI_ENABLED and not is_v2:
+            raise HTTPException(409, "CERTIFICATE_MANIFEST_V2_REQUIRED")
+        if is_v2 and req.manifest.signer_user_id != user_id:
+            raise HTTPException(422, "CERTIFICATE_SIGNER_MISMATCH")
+        cert = signing_certificate(db, user_id, key.id, certificate_sha256=req.manifest.certificate_sha256) if is_v2 else None
+        if req.manifest.signing_context != f"DOCSIGN_DOCUMENT_SIGNATURE_V{req.manifest.manifest_version}":
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Signing context không đúng quy định (Chống cross-purpose signature)"
@@ -419,6 +435,9 @@ class SignatureService:
                 detail=f"Thuật toán '{key.algorithm}' chưa được hỗ trợ"
             )
 
+        from backend.app.services.timestamp_service import issue_timestamp
+        timestamp_token = issue_timestamp(req.signature_b64, db)
+
         # 10. Atomic DB Write Transaction: Consume Nonce -> Insert Signature -> Update State to SIGNED
         try:
             # 10.1. Atomic conditional consumption of signing session
@@ -460,6 +479,8 @@ class SignatureService:
                 )
 
             now = utc_now()
+            if is_v2:
+                cert = signing_certificate(db, user_id, key.id, certificate_sha256=req.manifest.certificate_sha256)
             # 10.2. Insert Signature Record
             new_signature = Signature(
                 id=str(uuid.uuid4()),
@@ -470,12 +491,17 @@ class SignatureService:
                 canonical_manifest_json=canonical_bytes.decode("utf-8"),
                 manifest_sha256=computed_manifest_sha256,
                 signature_b64=req.signature_b64,
-                signature_format="DETACHED_JCS_V1",
+                signature_format="DETACHED_JCS_V2" if is_v2 else "DETACHED_JCS_V1",
                 signed_at=now,
                 created_at=now
             )
             db.add(new_signature)
             db.flush()  # Flush so the SQLite trigger sees EXISTS (SELECT 1 FROM signatures WHERE version_id = NEW.id)
+            if timestamp_token is not None:
+                db.add(SignatureTimestamp(signature_id=new_signature.id, token_b64=timestamp_token))
+            if cert is not None:
+                db.add(SignatureCertificateBinding(signature_id=new_signature.id, certificate_id=cert.id,
+                    certificate_sha256=cert.fingerprint))
 
             # 10.3. Update DocumentVersion state to SIGNED (validated by SQLite trigger)
             version.state = VersionState.SIGNED
@@ -486,6 +512,7 @@ class SignatureService:
 
             return SignatureResponse.model_validate(new_signature)
         except HTTPException:
+            db.rollback()
             raise
         except IntegrityError as e:
             db.rollback()

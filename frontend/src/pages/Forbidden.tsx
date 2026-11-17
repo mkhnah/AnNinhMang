@@ -12,9 +12,7 @@ export const Forbidden: React.FC = () => {
 
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">403 — Truy cập bị từ chối</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Bạn không có quyền quản trị để truy cập vào phân hệ này. Hệ thống RBAC đã ngăn chặn yêu cầu để bảo đảm an toàn.
-          </p>
+
         </div>
 
         <div className="pt-2">

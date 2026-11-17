@@ -18,6 +18,7 @@ from backend.app.schemas.signature import (
 from backend.app.schemas.verify import (
     VerificationResultResponse,
     SignaturePackage,
+    SignaturePackageV2,
 )
 from backend.app.services.signature_service import SignatureService
 from backend.app.services.verification_service import VerificationService
@@ -132,7 +133,7 @@ def verify_document_version_internal(
 
 @router.get(
     "/documents/{document_id}/versions/{version_id}/signature-package",
-    response_model=SignaturePackage,
+    response_model=SignaturePackage | SignaturePackageV2,
     status_code=status.HTTP_200_OK,
     summary="Export detached signature package for independent third-party verification"
 )

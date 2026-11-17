@@ -29,6 +29,13 @@ export interface PublicShareResult {
     summary_status: string;
     evidence_consistency: string;
     results: {
+      certificate_binding?: string;
+      certificate_chain?: string;
+      certificate_validity?: string;
+      certificate_revocation?: string;
+      identity_binding?: string;
+      identity_assurance?: string;
+      trust_scope?: string;
       cryptographic_validity: string;
       document_integrity: string;
       key_ownership: string;
@@ -37,6 +44,9 @@ export interface PublicShareResult {
       declared_timestamp: string | null;
       verification_time: string;
       timestamp_trust_level: string;
+      trusted_timestamp?: string | null;
+      timestamp_status?: string;
+      timestamp_scope?: string | null;
     };
     warnings: string[];
     warning_codes: string[];

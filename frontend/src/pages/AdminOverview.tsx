@@ -44,12 +44,9 @@ export const AdminOverview: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trung tâm Quản trị An ninh</h1>
-            <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-purple-200">
-              Admin Area
-            </span>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quản lý tài khoản</h1>
           </div>
-          <p className="text-sm text-slate-500 mt-1">Giám sát tài khoản, phân quyền và trạng thái khóa hệ thống</p>
+
         </div>
 
         <button

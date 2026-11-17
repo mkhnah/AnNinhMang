@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+const render = (ui: React.ReactNode) => rtlRender(ui, {wrapper: MemoryRouter});
 import { beforeEach, expect, it, vi } from 'vitest';
 import { IndependentVerify } from '../IndependentVerify';
 const mocks=vi.hoisted(()=>({verify:vi.fn(),export:vi.fn()}));

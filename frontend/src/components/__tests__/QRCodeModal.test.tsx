@@ -53,7 +53,7 @@ describe('QRCodeModal Component', () => {
     render(<QRCodeModal share={mockShare} onClose={onClose} />);
 
     expect(screen.getByRole('dialog', { name: 'Mã QR xác minh' })).toBeInTheDocument();
-    expect(screen.getByText('Mã QR Xác Minh')).toBeInTheDocument();
+    expect(screen.getByText('Mã QR xác minh')).toBeInTheDocument();
     expect(screen.getByText('Nhãn: Báo cáo Kiểm toán 2026')).toBeInTheDocument();
 
     const input = screen.getByRole('textbox') as HTMLInputElement;

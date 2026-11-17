@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AlertTriangle, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
 import { sharesApi, PublicShareResult } from '../../api/shares';
+import { pkiLabels } from '../../components/Verification/PkiResultPanel';
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return 'Không có';
@@ -28,8 +29,14 @@ const evidenceLabels: Record<string, string> = {
   CONSISTENT: 'Bằng chứng nhất quán', INCONSISTENT: 'Bằng chứng không nhất quán',
   NOT_APPLICABLE: 'Chưa đủ bằng chứng',
 };
+const trustLabels: Record<string, string> = {
+  TRUSTED_CA: 'CA tin cậy', SELF_REGISTERED: 'Khóa tự đăng ký', UNKNOWN: 'Chưa xác định',
+};
+const ownershipLabels: Record<string, string> = {
+  VERIFIED_POP: 'Đã chứng minh', UNVERIFIED: 'Chưa chứng minh', UNKNOWN: 'Chưa xác định',
+};
 function Status({ value, labels }: { value: string; labels: Record<string, string> }) {
-  const positive = ['VALID', 'UNCHANGED', 'ACTIVE', 'CONSISTENT'].includes(value);
+  const positive = ['VALID', 'UNCHANGED', 'ACTIVE', 'CONSISTENT', 'TRUSTED_CA', 'VERIFIED_POP', 'TRUSTED_TSA'].includes(value);
   const negative = ['INVALID', 'TAMPERED', 'REVOKED', 'INCONSISTENT'].includes(value);
   return <span className={`font-semibold ${positive ? 'text-emerald-700' : negative ? 'text-rose-700' : 'text-amber-700'}`}>
     {labels[value] || 'Chưa đủ bằng chứng'}
@@ -108,7 +115,7 @@ export function PublicShare() {
         <div className="rounded-2xl bg-white p-8 text-center shadow-md">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
           <h2 className="mt-4 text-lg font-medium text-slate-900">Đang kiểm tra bằng chứng xác minh…</h2>
-          <p className="mt-1 text-sm text-slate-500">Đang phân tích tính toàn vẹn và chữ ký số từ máy chủ.</p>
+
         </div>
       </div>
     );
@@ -121,9 +128,6 @@ export function PublicShare() {
           <ShieldX className="mx-auto text-rose-600" size={54} />
           <h1 className="mt-4 text-2xl font-semibold text-slate-900">Không thể xác minh</h1>
           <p className="mt-2 text-slate-600">{error}</p>
-          <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-            Nếu bạn nhận được liên kết này từ người khác, vui lòng yêu cầu họ phát hành mã QR mới.
-          </div>
         </div>
       </div>
     );
@@ -140,122 +144,55 @@ export function PublicShare() {
   const isOverallVerified =
     isCryptoValid && isDocIntact && isEvidenceConsistent && isKeyActive && result.results.summary_status === 'VERIFIED';
 
-  return (
-    <div className="mx-auto max-w-xl p-6">
-      <div className="rounded-2xl bg-white p-6 shadow-md border border-slate-100">
-        {/* Header Status Banner */}
-        <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
-          {isOverallVerified ? (
-            <ShieldCheck className="text-emerald-600 shrink-0" size={48} />
-          ) : (
-            <ShieldAlert className="text-amber-600 shrink-0" size={48} />
-          )}
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Kết quả xác thực điện tử</h1>
-            <p className="text-sm text-slate-600 mt-0.5">
-              {isOverallVerified
-                ? 'Tài liệu nguyên bản và chữ ký số hợp lệ theo bằng chứng máy chủ'
-                : 'Chữ ký số có cảnh báo cần lưu ý hoặc bằng chứng chưa hoàn hảo'}
-            </p>
-          </div>
+
+  return <div className="verify-page">
+    <section className="ui-card ui-card-body">
+      <header className="flex items-center gap-4 border-b border-slate-100 pb-6">
+        {isOverallVerified ? <ShieldCheck className="text-emerald-600" size={38}/> : <ShieldAlert className="text-amber-600" size={38}/>}
+        <div className="min-w-0"><h1>Kết quả xác minh</h1>
+          <span className={'ui-badge mt-2 '+(isOverallVerified ? 'ui-badge-success' : 'ui-badge-warning')}>{isOverallVerified ? 'Đã xác minh' : 'Cần kiểm tra'}</span>
         </div>
-
-        {/* Document Metadata */}
-        <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm">
-          <h2 className="font-semibold text-slate-800">Thông tin tài liệu</h2>
-          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-            <span className="text-slate-500">Tên tài liệu:</span>
-            <span className="col-span-2 font-medium text-slate-800">{result.title}</span>
-            <span className="text-slate-500">Phiên bản:</span>
-            <span className="col-span-2 font-medium text-slate-800">Phiên bản {result.version_no} ({result.original_filename})</span>
-            <span className="text-slate-500">Thời điểm ký khai báo:</span>
-            <span className="col-span-2 font-medium text-slate-800">{formatDate(dims.declared_timestamp)}</span>
-            <span className="text-slate-500">Thời điểm xác minh:</span>
-            <span className="col-span-2 font-medium text-slate-800">{formatDate(result.verified_at)}</span>
-          </div>
-        </div>
-
-        {/* 6 Dimensions Grid */}
-        <div className="mt-5 space-y-3">
-          <h2 className="font-semibold text-slate-800 text-sm">Phân tích đa chiều chữ ký & toàn vẹn</h2>
-          
-          <div className="grid gap-2 text-xs">
-            {/* 1. Cryptographic Validity */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
-              <span className="font-medium text-slate-700">1. Tính hợp lệ mật mã (RSA-PSS)</span>
-              <Status value={dims.cryptographic_validity} labels={cryptoLabels} />
-            </div>
-
-            {/* 2. Document Integrity */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
-              <span className="font-medium text-slate-700">2. Tính toàn vẹn tệp PDF</span>
-              <Status value={dims.document_integrity} labels={integrityLabels} />
-            </div>
-
-            {/* 3. Key Ownership */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
-              <span className="font-medium text-slate-700">3. Quyền sở hữu khóa (PoP)</span>
-              <span className="font-semibold text-slate-800">
-                {dims.key_ownership === 'VERIFIED_POP' ? 'Đã xác thực PoP' : dims.key_ownership}
-              </span>
-            </div>
-
-            {/* 4. Certificate Trust */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
-              <span className="font-medium text-slate-700">4. Mức độ chứng thực khóa</span>
-              <span className="font-semibold text-amber-700">
-                {dims.certificate_trust === 'SELF_REGISTERED'
-                  ? 'Khóa tự đăng ký (Self-Registered)'
-                  : dims.certificate_trust}
-              </span>
-            </div>
-
-            {/* 5. Key Revocation Status */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
-              <span className="font-medium text-slate-700">5. Trạng thái thu hồi khóa</span>
-              <Status value={dims.key_revocation_status} labels={keyLabels} />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-slate-200 p-3 text-xs">
-          <span className="block font-medium text-slate-700">6. Tính nhất quán bằng chứng</span>
-          <Status value={result.results.evidence_consistency} labels={evidenceLabels} />
-        </div>
-        {dims.certificate_trust === 'SELF_REGISTERED' && <p className="mt-3 text-xs text-amber-800">
-          Khóa tự đăng ký không phải chứng thư được CA xác nhận. Thời điểm ký khai báo chưa được TSA chứng thực.
-        </p>}
-
-        {/* Signer Fingerprint */}
-        <div className="mt-4 rounded bg-slate-50 p-3 text-xs">
-          <span className="font-medium text-slate-600 block">Fingerprint Public Key (SHA-256):</span>
-          <code className="break-all font-mono text-slate-800 block mt-1">
-            {result.signer_fingerprint || 'Không xác định'}
-          </code>
-        </div>
-
-        {/* Warnings Alert */}
-        {result.results.warnings && result.results.warnings.length > 0 && (
-          <div className="mt-4 rounded-lg bg-amber-50 p-3.5 text-xs text-amber-900 border border-amber-200">
-            <div className="flex items-center gap-1.5 font-semibold">
-              <AlertTriangle size={15} /> Lưu ý an ninh & pháp lý:
-            </div>
-            <ul className="mt-1.5 list-disc pl-5 space-y-1">
-              {result.results.warnings.map((w, idx) => (
-                <li key={idx}>{w}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Privacy & Zero PDF Leakage Notice */}
-        <div className="mt-6 border-t border-slate-100 pt-4 text-center">
-          <p className="text-[11px] text-slate-400">
-            Bảo vệ quyền riêng tư (Zero PDF Leakage): Trang xác minh này chỉ đánh giá và trả về kết quả
-            toán học từ chữ ký số rời; tuyệt đối không cung cấp tải về hoặc làm lộ nội dung tệp PDF gốc.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+      </header>
+      <section className="mt-6">
+        <h2 className="font-semibold mb-4">Thông tin tài liệu</h2>
+        <dl className="ui-data">
+          <div className="full-width"><dt>Tài liệu</dt><dd className="font-semibold">{result.title}</dd></div>
+          <div><dt>Phiên bản</dt><dd>{result.version_no}</dd></div>
+          <div><dt>Thời điểm ký khai báo:</dt><dd>{formatDate(dims.declared_timestamp)}</dd></div>
+          <div><dt>Thời điểm xác minh</dt><dd>{formatDate(result.verified_at)}</dd></div>
+          {dims.trusted_timestamp&&<div><dt>Thời gian TSA chứng thực</dt><dd>{formatDate(dims.trusted_timestamp)}</dd></div>}
+          {dims.timestamp_scope==='DOCSIGN_PRIVATE_TSA'&&<div><dt>Phạm vi dấu thời gian</dt><dd>TSA nội bộ DocSign</dd></div>}
+        </dl>
+      </section>
+      <section className="mt-6 border-t border-slate-100 pt-6">
+        <h2 className="font-semibold mb-4">Kết quả kiểm tra</h2>
+        <dl className="grid sm:grid-cols-2 gap-3">
+          {[
+            {label:'Chữ ký',value:dims.cryptographic_validity,labels:cryptoLabels},
+            {label:'Toàn vẹn tài liệu',value:dims.document_integrity,labels:integrityLabels},
+            {label:'Sở hữu khóa',value:dims.key_ownership,labels:ownershipLabels},
+            {label:'Tin cậy chứng chỉ',value:dims.certificate_trust,labels:trustLabels},
+            {label:'Trạng thái khóa',value:dims.key_revocation_status,labels:keyLabels},
+            {label:'Bằng chứng',value:result.results.evidence_consistency,labels:evidenceLabels},
+            {label:'Dấu thời gian',value:dims.timestamp_status==='INVALID'?'INVALID':dims.timestamp_trust_level,labels:{TRUSTED_TSA:'Đã xác minh TSA',DECLARED:'Thời gian khai báo',SERVER_RECORDED:'Máy chủ ghi nhận',UNKNOWN:'Chưa xác định',INVALID:'Không hợp lệ'}},
+          ].map(({label,value,labels})=><div className="rounded-xl border border-slate-200 p-4 min-w-0" key={label}>
+            <dt className="text-sm text-slate-500 mb-2">{label}</dt><dd className="text-sm"><Status value={value} labels={labels}/></dd>
+          </div>)}
+        </dl>
+      </section>
+      {dims.certificate_binding && <section className="mt-6 border-t border-slate-100 pt-6">
+        <h2 className="font-semibold mb-4">Chứng chỉ và danh tính</h2>
+        <dl className="ui-data">
+          {Object.entries({certificate_binding:'Chứng chỉ',certificate_chain:'CA phát hành',certificate_validity:'Thời hạn',certificate_revocation:'Thu hồi',identity_binding:'Tài khoản',identity_assurance:'Mức đối chiếu danh tính'}).map(([field,label])=><div key={field}>
+            <dt>{label}</dt><dd>{pkiLabels[String(dims[field as keyof typeof dims])] || 'Chưa xác định'}</dd>
+          </div>)}
+        </dl>
+      </section>}
+      <div className="mt-6"><span className="text-xs text-slate-500">Fingerprint SHA-256</span><code className="ui-code mt-2">{result.signer_fingerprint || 'Không xác định'}</code></div>
+      {result.results.warnings && result.results.warnings.length>0 && <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <h2 className="font-semibold flex items-center gap-2"><AlertTriangle size={17}/>Cảnh báo xác minh</h2>
+        <ul className="mt-2 list-disc pl-5 space-y-1">{result.results.warnings.map((warning,index)=><li key={index}>{warning}</li>)}</ul>
+      </div>}
+    </section>
+  </div>;
 }

@@ -52,7 +52,7 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
     }, [documentId, versionId]);
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Xác minh tài liệu" className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
@@ -62,7 +62,7 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
                         </div>
                         <div>
                             <h2 className="text-base font-bold text-slate-900">
-                                Xác minh chữ ký tài liệu nội bộ
+                                Xác minh tài liệu
                             </h2>
                             <p className="text-xs text-slate-500">
                                 {documentTitle} · Phiên bản {versionNo}
@@ -71,6 +71,7 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
                     </div>
                     <button
                         type="button"
+                        aria-label="Đóng cửa sổ"
                         onClick={onClose}
                         className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
                     >
@@ -84,11 +85,9 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
                         <div className="py-16 text-center space-y-3">
                             <Loader2 className="w-10 h-10 animate-spin text-sky-600 mx-auto" />
                             <p className="text-sm font-semibold text-slate-700">
-                                Đang tính toán mã băm SHA-256 và kiểm tra chữ ký RSA-PSS 3072-bit…
+                                Đang xác minh…
                             </p>
-                            <p className="text-xs text-slate-400">
-                                Đang tra cứu trạng thái thu hồi khóa và bằng chứng sở hữu Proof-of-Possession.
-                            </p>
+
                         </div>
                     )}
 

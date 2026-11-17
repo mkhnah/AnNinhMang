@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, Annotated
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 import re
 
@@ -30,8 +30,8 @@ class SignedManifest(BaseModel):
     @field_validator("manifest_version", mode="before")
     @classmethod
     def integer_version(cls, v):
-        if type(v) is not int or v != 1:
-            raise ValueError("manifest_version must be integer 1")
+        if type(v) is not int or v != cls.model_fields['manifest_version'].annotation.__args__[0]:
+            raise ValueError("Invalid integer manifest version")
         return v
 
     @field_validator("signing_nonce")
@@ -69,9 +69,25 @@ class SignedManifest(BaseModel):
         return v
 
 
+class SignedManifestV2(SignedManifest):
+    manifest_version: Literal[2]
+    signing_context: Literal["DOCSIGN_DOCUMENT_SIGNATURE_V2"]
+    signer_user_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,36}$")
+    certificate_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+Manifest = SignedManifest | SignedManifestV2
+
+
+def parse_manifest(value):
+    from pydantic import TypeAdapter
+    return TypeAdapter(Manifest).validate_python(value)
+
+
 class PrepareSignRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     key_id: str = Field(..., description="ID of active registered public key to sign with")
+    certificate_id: str | None = Field(None, pattern=r"^[A-Za-z0-9_-]{1,36}$")
 
     @field_validator("key_id")
     @classmethod
@@ -82,16 +98,18 @@ class PrepareSignRequest(BaseModel):
 
 
 class PrepareSignResponse(BaseModel):
-    manifest: SignedManifest
+    manifest: Manifest
     manifest_sha256: str
     expires_at: datetime
+    certificate_pem: str | None = None
+    issuer_certificate_pem: str | None = None
 
 
 class SignatureSubmitRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     version_id: str = Field(..., description="ID of DocumentVersion being signed")
     key_id: str = Field(..., description="ID of PublicKey used for signing")
-    manifest: SignedManifest = Field(..., description="Signed manifest object")
+    manifest: Manifest = Field(..., description="Signed manifest object")
     signature_b64: str = Field(..., min_length=512, max_length=512, description="Base64 encoded digital signature")
 
     @field_validator("version_id", "key_id")

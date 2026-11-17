@@ -43,7 +43,7 @@ export function Dashboard() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Tổng quan an ninh</h1>
-          <p className="text-sm text-slate-500 mt-2">Giám sát ký số và toàn vẹn nhật ký. Tự cập nhật mỗi 30 giây.</p>
+
         </div>
         <button onClick={() => setRevision(value => value + 1)} disabled={loading}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50">
@@ -71,16 +71,19 @@ export function Dashboard() {
       {error && <div role="alert" className="p-4 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 mb-6">{error}</div>}
       {loading && <p role="status" className="text-sm text-slate-500 py-8">Đang tải thống kê và cảnh báo…</p>}
       {stats && <>
+        {stats.pki_counts && <section className="rounded-xl border bg-white p-5 mb-6"><h2 className="font-semibold mb-3">Chứng chỉ và CA</h2><div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          {Object.entries({certificates:'Chứng chỉ đã cấp',revoked:'Đã thu hồi',expiring:'Hết hạn trong 30 ngày',pending_reviews:'Danh tính chờ duyệt'}).map(([key,label]) => <div key={key}><p className="text-slate-500">{label}</p><p className="text-2xl font-semibold mt-2">{stats.pki_counts?.[key] ?? 0}</p></div>)}
+        </div><Link to="/admin/pki" className="inline-block text-sky-700 text-sm mt-4">Quản trị CA và danh tính →</Link></section>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Tài liệu', value: stats.total_documents.toLocaleString('vi-VN'), detail: `${stats.total_versions} phiên bản`, icon: FileText },
-            { label: 'Phiên bản đã ký', value: stats.signed_versions.toLocaleString('vi-VN'), detail: 'Trạng thái SIGNED', icon: ShieldCheck },
-            { label: 'Khóa đang hoạt động', value: stats.active_keys.toLocaleString('vi-VN'), detail: 'Khóa có thể dùng để ký', icon: KeyRound },
+            { label: 'Phiên bản đã ký', value: stats.signed_versions.toLocaleString('vi-VN'), detail: '', icon: ShieldCheck },
+            { label: 'Khóa đang hoạt động', value: stats.active_keys.toLocaleString('vi-VN'), detail: '', icon: KeyRound },
             { label: 'Xác minh thành công', value: stats.verification_success_rate === null ? '—' : `${stats.verification_success_rate.toLocaleString('vi-VN')}%`, detail: `${stats.verification_total} lượt trong 30 ngày`, icon: CheckCircle2 },
           ].map(card => <section key={card.label} className="rounded-xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between text-slate-500 text-sm"><span>{card.label}</span><card.icon size={18} /></div>
             <p className="text-3xl font-semibold tracking-tight mt-4">{card.value}</p>
-            <p className="text-xs text-slate-500 mt-2">{card.detail}</p>
+            {card.detail && <p className="text-xs text-slate-500 mt-2">{card.detail}</p>}
           </section>)}
         </div>
 
@@ -94,10 +97,13 @@ export function Dashboard() {
               {stats.alerts.map(alert => <li key={`${alert.code}-${alert.actor_id}-${alert.client_ip}`} className="py-3 text-sm">
                 <p className="font-semibold text-rose-800">{alert.code === 'IDOR_ATTEMPT'
                   ? `${alert.count} lần bị chặn khi truy cập tài nguyên trái quyền`
+                  : alert.code === 'CA_UNTRUSTED' ? `${alert.count} CA không còn được tin cậy`
+                  : alert.code === 'CERTIFICATE_EXPIRING' ? `${alert.count} chứng chỉ hết hạn trong 30 ngày`
+                  : alert.code === 'REPEATED_CERTIFICATE_FAILURE' ? `${alert.count} lần kiểm tra chứng chỉ / chữ ký gần nhất thất bại`
                   : `${alert.count} lần xác minh gần nhất liên tiếp chưa thành công`}</p>
-                <p className="mt-1 break-all text-slate-600">{alert.actor_id ? `Tài khoản ${alert.actor_id}` : `IP ${alert.client_ip}`}</p>
-                <Link className="inline-block text-sky-700 underline mt-2" to={`/admin/audit?${new URLSearchParams({
-                  action: alert.code === 'IDOR_ATTEMPT' ? 'ACCESS_DENIED_IDOR' : 'DOCUMENT_VERIFY',
+                <p className="mt-1 break-all text-slate-600">{alert.actor_id ? `Tài khoản ${alert.actor_id}` : alert.client_ip ? `IP ${alert.client_ip}` : 'Toàn hệ thống'}</p>
+                <Link className="inline-block text-sky-700 underline mt-2" to={['CERTIFICATE_EXPIRING','CA_UNTRUSTED'].includes(alert.code) ? '/admin/pki' : `/admin/audit?${new URLSearchParams({
+                  action: alert.code === 'IDOR_ATTEMPT' ? 'ACCESS_DENIED_IDOR' : alert.code === 'REPEATED_CERTIFICATE_FAILURE' ? 'CERTIFICATE_VERIFY' : 'DOCUMENT_VERIFY',
                   ...(alert.actor_id ? { actor_id: alert.actor_id } : alert.client_ip ? { client_ip: alert.client_ip } : {}),
                   since: new Date(new Date(stats.generated_at).getTime() - stats.alert_window_minutes * 60_000).toISOString(),
                 })}`}>Tra cứu sự kiện</Link>
@@ -110,7 +116,7 @@ export function Dashboard() {
         <div className="grid lg:grid-cols-5 gap-6">
           <section className="lg:col-span-3 rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="font-semibold">Lượt xác minh trong 7 ngày</h2>
-            <p className="text-xs text-slate-500 mt-1">Ngày thống kê theo UTC</p>
+
             <div role="img" aria-label="Biểu đồ lượt xác minh theo ngày" className="grid grid-cols-7 gap-2 sm:gap-4 mt-6">
               {stats.verification_daily.map(day => <div key={day.date} className="min-w-0 text-center">
                 <div className="h-36 flex flex-col justify-end items-center" title={`${day.date} · Thành công ${day.verified} · Chưa thành công ${day.unsuccessful}`}>
@@ -135,7 +141,7 @@ export function Dashboard() {
             </ul>
           </section>
         </div>
-        <p className="text-xs text-slate-500 mt-5">Cập nhật {new Date(stats.generated_at).toLocaleString('vi-VN')} · Cảnh báo sau {stats.verification_failure_threshold} lần xác minh liên tiếp chưa thành công.</p>
+        <p className="text-xs text-slate-500 mt-5">Cập nhật {new Date(stats.generated_at).toLocaleString('vi-VN')}</p>
       </>}
     </div>
   );

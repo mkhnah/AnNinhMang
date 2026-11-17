@@ -175,11 +175,11 @@ def test_additive_migration_preserves_populated_evidence(client_p4, attempt, db_
     import os
     import sqlite3
     import subprocess
-    from pathlib import Path
+    import sys
     assert post(client_p4, attempt).status_code == 201
     path = tmp_path / 'historical.db'
     env = {**os.environ, 'DEBUG':'false', 'DATABASE_URL':f'sqlite:///{path}'}
-    command = [str(Path('venv/bin/alembic').resolve())]
+    command = [sys.executable, '-m', 'alembic']
     result = subprocess.run(command+['upgrade','a4f000000004'], env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
     source = test_engine.raw_connection()
@@ -187,9 +187,10 @@ def test_additive_migration_preserves_populated_evidence(client_p4, attempt, db_
         with sqlite3.connect(path) as target:
             target.execute('PRAGMA foreign_keys=OFF')
             tables = [row[0] for row in target.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'")]
+            columns = {table: ','.join('"' + row[1] + '"' for row in target.execute(f'PRAGMA table_info("{table}")')) for table in tables}
             # Auth fixtures include committed signature, used session, key, document and user.
             for table in tables:
-                rows = source.execute(f'SELECT * FROM "{table}"').fetchall()
+                rows = source.execute(f'SELECT {columns[table]} FROM "{table}"').fetchall()
                 if rows:
                     target.executemany(f'INSERT INTO "{table}" VALUES ({",".join("?" for _ in rows[0])})',rows)
             target.commit()
@@ -200,7 +201,7 @@ def test_additive_migration_preserves_populated_evidence(client_p4, attempt, db_
         assert result.returncode == 0,result.stderr
         with sqlite3.connect(path) as target:
             for table in tables:
-                assert target.execute(f'SELECT * FROM "{table}" ORDER BY id').fetchall() == before[table]
+                assert target.execute(f'SELECT {columns[table]} FROM "{table}" ORDER BY id').fetchall() == before[table]
             assert not target.execute('PRAGMA foreign_key_check').fetchall()
             for table in ['signatures','signing_sessions']:
                 assert all(row[6]=='NO ACTION' for row in target.execute(f'PRAGMA foreign_key_list({table})'))

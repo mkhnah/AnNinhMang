@@ -24,6 +24,8 @@ import { signManifest, verifyManifestSignature } from '../../crypto/signer';
 import { PDFViewer } from '../../components/PDFViewer/PDFViewer';
 import { errorMessage } from './index';
 import { Link } from 'react-router-dom';
+import { pkiApi } from '../../api/pki';
+import { CertificateDto } from '../../types/pki';
 
 interface SignModalProps {
     documentId: string;
@@ -57,6 +59,9 @@ export const SignModal: React.FC<SignModalProps> = ({
     // Key options
     const [keyOptions, setKeyOptions] = useState<KeyOption[]>([]);
     const [selectedKeyId, setSelectedKeyId] = useState<string>('');
+    const [certificates, setCertificates] = useState<CertificateDto[]>([]);
+    const [certificateId, setCertificateId] = useState('');
+    const [certificateError, setCertificateError] = useState('');
     const [loadingKeys, setLoadingKeys] = useState<boolean>(true);
     const [keysError, setKeysError] = useState<string>('');
 
@@ -118,7 +123,22 @@ export const SignModal: React.FC<SignModalProps> = ({
         };
     }, [user]);
 
-    const identity = `${documentId}/${versionId}/${selectedKeyId}/${user?.id}/${fileSha256}`;
+    useEffect(() => {
+        let live = true;
+        setCertificates([]); setCertificateId(''); setCertificateError('');
+        const key = keyOptions.find(option => option.serverKey.id === selectedKeyId)?.serverKey;
+        if (key?.current_certificate_id) {
+            void pkiApi.certificatesForKey(key.id).then(rows => {
+                if (!live) return;
+                const active = rows.filter(cert => cert.status === 'ACTIVE');
+                setCertificates(active);
+                setCertificateId(active.find(cert => cert.id === key.current_certificate_id)?.id || active[0]?.id || '');
+                if (!active.length) setCertificateError('Khóa chưa có chứng chỉ còn hiệu lực. Hãy gia hạn tại trang Chứng chỉ của tôi.');
+            }).catch(() => {if(live) setCertificateError('Không tải được chứng chỉ. Hãy làm mới hoặc kiểm tra trang Chứng chỉ của tôi.');});
+        }
+        return () => {live=false;};
+    }, [selectedKeyId, keyOptions]);
+    const identity = `${documentId}/${versionId}/${selectedKeyId}/${certificateId}/${user?.id}/${fileSha256}`;
     const flow = useRef({ identity, generation: 0 });
     if (flow.current.identity !== identity) flow.current = { identity, generation: flow.current.generation + 1 };
     const currentIdentity = useRef('');
@@ -175,7 +195,9 @@ export const SignModal: React.FC<SignModalProps> = ({
         setPreparing(true);
         setSignError('');
         try {
-            const data = await signaturesApi.prepareSign(documentId, versionId, selectedKeyId);
+            if (certificateError) throw new Error(certificateError);
+            const data = certificateId ? await signaturesApi.prepareSign(documentId, versionId, selectedKeyId, certificateId)
+                : await signaturesApi.prepareSign(documentId, versionId, selectedKeyId);
             if (!isCurrent(snapshot)) return;
             setConfirmedIntent(false);
             setPrepareData(data);
@@ -253,6 +275,13 @@ export const SignModal: React.FC<SignModalProps> = ({
                 versionId, metadataHash: fileSha256, previewHash: preview.hash,
                 keyId: selectedKeyId, fingerprint: selected.serverKey.fingerprint, userId: user.id,
             }, record);
+            if (prepareData.manifest.manifest_version === 2) {
+                const { validateCertificateBinding } = await import('../../crypto/certificateBinding');
+                if (!prepareData.certificate_pem || !prepareData.issuer_certificate_pem) throw new Error('Thiếu chứng chỉ trong phiên ký');
+                await validateCertificateBinding(prepareData.manifest, prepareData.certificate_pem, prepareData.issuer_certificate_pem, user.id);
+                const certificate = await pkiApi.verifyCertificate(prepareData.certificate_pem);
+                if (!certificate.verified || certificate.fingerprint !== prepareData.manifest.certificate_sha256) throw new Error('Chứng chỉ không còn hợp lệ hoặc đã bị thu hồi');
+            }
             const hash = await computeManifestSha256(prepareData.manifest);
             if (hash !== prepareData.manifest_sha256 || !Number.isFinite(Date.parse(prepareData.expires_at)) || Date.parse(prepareData.expires_at) <= Date.now()) throw new Error('Phiên ký không hợp lệ hoặc đã hết hạn');
             if (!isCurrent(snapshot)) return;
@@ -296,7 +325,7 @@ export const SignModal: React.FC<SignModalProps> = ({
                         </div>
                         <div>
                             <h2 id="sign-modal-title" className="text-lg font-bold text-slate-800">
-                                Ký số Detached Manifest — RFC 8785
+                                Ký tài liệu
                             </h2>
                             <p className="text-xs text-slate-500">
                                 {documentTitle} · Phiên bản v{versionNo}
@@ -315,6 +344,8 @@ export const SignModal: React.FC<SignModalProps> = ({
 
                 {/* Body Content */}
                 <div className="p-6">
+                    {certificates.length > 0 && step === 1 && <label className="block text-sm font-medium mb-4">Chứng chỉ dùng để ký<select value={certificateId} disabled={signing || preparing || !!pending} onChange={e => {setCertificateId(e.target.value);setPrepareData(null);setConfirmedIntent(false);}} className="block w-full border rounded-lg p-2 mt-2">{certificates.map(cert => <option key={cert.id} value={cert.id}>{cert.subject.startsWith('CN=DocSign account ') ? 'Chứng chỉ tài khoản' : cert.subject.replace(/^CN=/, '')} · {cert.serial.slice(0,12)}</option>)}</select></label>}
+                    {certificateError && <p role="alert" className="text-sm text-rose-700 mb-4">{certificateError}</p>}
                     {/* Error Notice */}
                     {signError && (
                         <div
@@ -343,10 +374,7 @@ export const SignModal: React.FC<SignModalProps> = ({
                                 <CheckCircle2 className="w-10 h-10" />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800 mb-2">Ký số thành công!</h3>
-                            <p className="text-sm text-slate-600 max-w-md mb-6">
-                                Chữ ký số RSA-PSS 3072-bit (Detached Manifest RFC 8785) đã được kiểm tra tính toàn vẹn
-                                và lưu trữ an toàn trong hệ thống. Phiên bản tài liệu đã chuyển sang trạng thái <strong>SIGNED</strong> và được khóa chống ghi đè vĩnh viễn.
-                            </p>
+
 
                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left w-full max-w-lg mb-6 text-xs font-mono space-y-2">
                                 <div>
@@ -400,11 +428,9 @@ export const SignModal: React.FC<SignModalProps> = ({
                                     <div className="space-y-4">
                                         <div>
                                             <h3 className="text-sm font-semibold text-slate-800 mb-1">
-                                                1. Chọn Khóa Ký Số (RSA-PSS)
+                                                Chọn khóa ký
                                             </h3>
-                                            <p className="text-xs text-slate-500">
-                                                Hệ thống sử dụng khóa cá nhân được lưu bảo mật trong trình duyệt để tạo chữ ký số. Khóa riêng tư không bao giờ được gửi lên máy chủ.
-                                            </p>
+
                                         </div>
 
                                         {loadingKeys ? (
@@ -481,11 +507,10 @@ export const SignModal: React.FC<SignModalProps> = ({
                                             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
                                                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                                                 <span>
-                                                    Khóa này chưa có Private Key trong trình duyệt. Bạn cần vào mục{' '}
+                                                    Chưa có khóa trên thiết bị này.{' '}
                                                     <Link to="/keys" className="font-semibold underline">
-                                                        Quản lý khóa
-                                                    </Link>{' '}
-                                                    để khôi phục từ tệp sao lưu trước khi có thể ký số.
+                                                        Khôi phục khóa
+                                                    </Link>
                                                 </span>
                                             </div>
                                         )}
@@ -510,7 +535,7 @@ export const SignModal: React.FC<SignModalProps> = ({
                                                 className="inline-flex items-center gap-2 px-5 py-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition"
                                             >
                                                 {preparing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                                Tiếp tục: Chuẩn bị Manifest
+                                                Tiếp tục
                                             </button>
                                         </div>
                                     </div>
@@ -520,15 +545,14 @@ export const SignModal: React.FC<SignModalProps> = ({
                                     <div className="space-y-4">
                                         <div>
                                             <h3 className="text-sm font-semibold text-slate-800 mb-1">
-                                                2. Xác nhận Manifest & Ký số
+                                                Xác nhận và ký
                                             </h3>
-                                            <p className="text-xs text-slate-500">
-                                                Backend đã khởi tạo Signing Session kèm Nonce duy nhất (TTL 5 phút). Bản kê Manifest sẽ được chuẩn hóa theo RFC 8785 (JCS) trước khi ký.
-                                            </p>
+
                                         </div>
 
                                         {/* Manifest Details Box */}
                                         <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                                            {prepareData.manifest.manifest_version === 2 && <div className="border-b pb-2"><span className="text-slate-500">Chứng chỉ được ràng buộc với chữ ký:</span><code className="block break-all mt-1">{prepareData.manifest.certificate_sha256}</code><span className="block mt-1">Tài khoản: {prepareData.manifest.signer_user_id}</span></div>}
                                             <div className="flex items-center justify-between text-slate-500 border-b border-slate-200 pb-2">
                                                 <span className="flex items-center gap-1 font-semibold">
                                                     <Clock className="w-3.5 h-3.5 text-amber-600" /> Hạn phiên ký:
@@ -575,7 +599,7 @@ export const SignModal: React.FC<SignModalProps> = ({
                                                 className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
                                             />
                                             <span className="text-xs text-slate-700 leading-relaxed">
-                                                Tôi đã xem xét đầy đủ nội dung tệp PDF, xác nhận giá trị băm SHA-256 và đồng ý dùng khóa cá nhân RSA-PSS của mình để ký số cam kết văn bản này.
+                                                Tôi đã đọc tài liệu và đồng ý ký bằng khóa cá nhân của mình.
                                             </span>
                                         </label>
 
@@ -597,12 +621,12 @@ export const SignModal: React.FC<SignModalProps> = ({
                                                 {signing ? (
                                                     <>
                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                        Đang tạo chữ ký RSA-PSS...
+                                                        Đang ký…
                                                     </>
                                                 ) : (
                                                     <>
                                                         <FileCheck className="w-4 h-4" />
-                                                        Ký số ngay (Sign with RSA-PSS)
+                                                        Ký số ngay
                                                     </>
                                                 )}
                                             </button>

@@ -160,8 +160,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
         return (
             <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-slate-200 min-h-[320px]">
                 <Loader2 className="w-8 h-8 text-sky-600 animate-spin mb-3" />
-                <p className="text-sm font-medium text-slate-600">Đang tải và giải mã an toàn tệp PDF...</p>
-                <p className="text-xs text-slate-400 mt-1">Đang kiểm tra SHA-256 của bytes PDF dùng để xem trước</p>
+                <p className="text-sm font-medium text-slate-600">Đang tải PDF…</p>
             </div>
         );
     }
@@ -179,7 +178,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
     return (
         <div className="flex flex-col bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
             {/* Toolbar */}
-            <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-600">
+            <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex flex-wrap gap-2 items-center justify-between text-xs text-slate-600">
                 <div className="flex items-center gap-1 font-medium">
                     <FileText className="w-4 h-4 text-sky-600 mr-1" />
                     <span>Trang {currentPage} / {numPages}</span>

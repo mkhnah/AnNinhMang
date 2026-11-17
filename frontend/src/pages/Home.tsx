@@ -20,9 +20,7 @@ export const Home: React.FC = () => {
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             Xin chào, {user.full_name}!
           </h1>
-          <p className="mt-2 text-sky-100 text-sm sm:text-base">
-            Bạn đang đăng nhập với vai trò <strong className="font-semibold underline">{user.role}</strong>. Phiên làm việc được bảo vệ bằng HttpOnly Cookie và mã hóa Argon2id.
-          </p>
+
         </div>
       </div>
 
@@ -34,9 +32,7 @@ export const Home: React.FC = () => {
               <UserCheck className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-900 text-lg">Hồ sơ người dùng</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              Xem chi tiết tài khoản, thời gian đăng nhập và quản lý hủy phiên trên tất cả thiết bị.
-            </p>
+
           </div>
           <div className="mt-6">
             <Link
@@ -54,9 +50,7 @@ export const Home: React.FC = () => {
               <Lock className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-900 text-lg">Bảo mật mật mã</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              Argon2id (64MB memory cost) chống tấn công GPU/ASIC. JWT HS256 ngắn hạn kèm Refresh Token Rotation.
-            </p>
+
           </div>
           <div className="mt-6">
             <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -72,9 +66,7 @@ export const Home: React.FC = () => {
                 <ShieldAlert className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-purple-950 text-lg">Quản trị hệ thống</h3>
-              <p className="text-sm text-slate-500 mt-1">
-                Theo dõi toàn bộ tài khoản người dùng, giám sát khóa tạm thời chống brute-force và phân quyền.
-              </p>
+
             </div>
             <div className="mt-6">
               <Link
@@ -92,9 +84,7 @@ export const Home: React.FC = () => {
                 <FileText className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-900 text-lg">Sắp ra mắt (Phase 2)</h3>
-              <p className="text-sm text-slate-500 mt-1">
-                Quản lý tài liệu PDF, phân tích AST, tính băm SHA-256 và lưu trữ phiên bản bất biến.
-              </p>
+
             </div>
             <div className="mt-6">
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">

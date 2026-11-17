@@ -160,7 +160,7 @@ describe('IndependentVerify Page', () => {
         vi.clearAllMocks();
     });
 
-    it('renders upload instructions and disabled start button initially', () => {
+    it('renders file controls and a disabled start button initially', () => {
         render(
             <StrictMode>
                 <MemoryRouter>
@@ -169,12 +169,15 @@ describe('IndependentVerify Page', () => {
             </StrictMode>
         );
 
-        expect(screen.getByText('Xác minh Tài liệu Độc lập')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Xác minh tài liệu PDF' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Chọn tệp PDF')).toBeInTheDocument();
+        expect(document.querySelectorAll('input[type="file"]')).toHaveLength(2);
+        expect(screen.queryByText('Chứng chỉ PEM riêng')).not.toBeInTheDocument();
         const startBtn = screen.getByRole('button', { name: /Bắt đầu xác minh/i });
         expect(startBtn).toBeDisabled();
     });
 
-    it('allows submitting verification with JSON text and displays results', async () => {
+    it('submits only the PDF and signature files and displays results', async () => {
         mocks.verifyIndependent.mockResolvedValue(mockVerifiedResult);
 
         render(
@@ -192,12 +195,8 @@ describe('IndependentVerify Page', () => {
         // Simulate file input
         fireEvent.change(pdfInput, { target: { files: [file] } });
 
-        // Switch to text mode for JSON
-        const textTabBtn = screen.getByRole('button', { name: /Dán JSON/i });
-        fireEvent.click(textTabBtn);
-
-        const textarea = screen.getByPlaceholderText(/Dán nội dung JSON ở đây/i);
-        fireEvent.change(textarea, { target: { value: '{"package_version":1,"manifest":{}}' } });
+        const signature = new File(['{"package_version":2}'], 'signature-package.json', {type:'application/json'});
+        fireEvent.change(screen.getByLabelText('Chọn tệp JSON'), {target:{files:[signature]}});
 
         const startBtn = screen.getByRole('button', { name: /Bắt đầu xác minh/i });
         await waitFor(() => expect(startBtn).toBeEnabled());
@@ -207,8 +206,8 @@ describe('IndependentVerify Page', () => {
         await waitFor(() => {
             expect(mocks.verifyIndependent).toHaveBeenCalledWith(
                 file,
+                signature,
                 null,
-                '{"package_version":1,"manifest":{}}',
                 expect.any(AbortSignal)
             );
             expect(screen.getByText(/Xác minh thành công/i)).toBeInTheDocument();
@@ -216,6 +215,23 @@ describe('IndependentVerify Page', () => {
     });
 });
 
+
+it('shows a verified internal TSA time separately from the declared signing time', () => {
+    render(<VerificationResultPanel result={{...mockVerifiedResult, results:{...mockVerifiedResult.results,
+        timestamp_trust_level:'TRUSTED_TSA', timestamp_status:'VALID', trusted_timestamp:'2026-11-17T10:00:00Z',
+        timestamp_authority:'CN=DocSign Internal TSA', timestamp_scope:'DOCSIGN_PRIVATE_TSA'}}}/>);
+    expect(screen.getByText('TRUSTED_TSA')).toHaveClass('ui-badge-success');
+    expect(screen.getByText('Thời gian TSA chứng thực')).toBeInTheDocument();
+    expect(screen.getByText('CN=DocSign Internal TSA')).toBeInTheDocument();
+    expect(screen.getByText(/không phải thời điểm ký được bên thứ ba độc lập xác nhận/)).toBeInTheDocument();
+});
+
+it('marks an invalid TSA token as invalid without displaying a trusted time', () => {
+    render(<VerificationResultPanel result={{...mockVerifiedResult, summary_status:'UNVERIFIABLE',
+        results:{...mockVerifiedResult.results, timestamp_status:'INVALID', trusted_timestamp:null}}}/>);
+    expect(screen.getByText('INVALID')).toHaveClass('ui-badge-danger');
+    expect(screen.queryByText('Thời gian TSA chứng thực')).not.toBeInTheDocument();
+});
 
 describe('Hash comparison accessibility', () => {
     it('marks exactly the differing characters and copies each digest independently', async () => {
@@ -229,7 +245,7 @@ describe('Hash comparison accessibility', () => {
         await waitFor(() => expect(writeText).toHaveBeenCalledWith(data.document_hash_expected));
         fireEvent.click(screen.getByRole('button', { name: 'Copy Computed SHA-256' }));
         await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(data.document_hash_computed));
-        expect(screen.getByText(/không cho biết chính xác vị trí byte/)).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Đã sao chép Computed SHA-256'));
     });
     it('does not download a report after its result was unmounted', async () => {
         let finish!: (value: VerificationReportResponse) => void;
@@ -251,5 +267,6 @@ it('does not describe UNKNOWN evidence as CA trust or a hash mismatch', () => {
     render(<VerificationResultPanel result={data}/>);
     expect(screen.getByText('Chưa đủ dữ liệu băm')).toBeInTheDocument();
     expect(screen.queryByText('Sai lệch mã băm')).not.toBeInTheDocument();
-    expect(screen.getByText('Chưa có bằng chứng khóa hoặc chuỗi chứng thư để đánh giá mức tin cậy.')).toBeInTheDocument();
+    expect(screen.getAllByText('UNKNOWN').length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText('TRUSTED_CA')).not.toBeInTheDocument();
 });

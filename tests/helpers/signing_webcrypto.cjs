@@ -5,7 +5,7 @@ const path = require('node:path');
 const readline = require('node:readline');
 (async () => {
   globalThis.window = { crypto: webcrypto, btoa, atob };
-  const built = await build({ stdin: { contents: `export { generateRsaPssKeypair } from './frontend/src/crypto/keygen'; export { createProofOfPossession } from './frontend/src/crypto/pop'; export { signManifest } from './frontend/src/crypto/signer'; export { canonicalizeManifest } from './frontend/src/crypto/manifestCanonicalizer';`, resolveDir: path.resolve(__dirname, '../..') }, bundle:true, write:false, platform:'node', format:'cjs' });
+  const built = await build({ stdin: { contents: `export { generateRsaPssKeypair } from './frontend/src/crypto/keygen'; export { createProofOfPossession } from './frontend/src/crypto/pop'; export { signManifest } from './frontend/src/crypto/signer'; export { canonicalizeManifest } from './frontend/src/crypto/manifestCanonicalizer'; export { validateCertificateBinding } from './frontend/src/crypto/certificateBinding';`, resolveDir: path.resolve(__dirname, '../..') }, bundle:true, write:false, platform:'node', format:'cjs' });
   const mod = {exports:{}};
   new Function('module','exports',built.outputFiles[0].text)(mod,mod.exports);
   const api = mod.exports;
@@ -20,6 +20,10 @@ const readline = require('node:readline');
       } else if (input.action === 'pop') result = {signature:await api.createProofOfPossession(bundle.keyPair.privateKey,input.payload)};
       else if (input.action === 'sign') result = {signature:await api.signManifest(input.payload,bundle.keyPair.privateKey)};
       else if (input.action === 'canonical') result = {bytes:Buffer.from(api.canonicalizeManifest(input.payload)).toString('base64')};
+      else if (input.action === 'certificate') {
+        await api.validateCertificateBinding(input.payload.manifest,input.payload.certificate_pem,input.payload.issuer_certificate_pem,input.payload.user_id);
+        result = {valid:true};
+      }
       else throw new Error('Unknown action');
       console.log(JSON.stringify(result));
     } catch(error) { console.log(JSON.stringify({error:error.message})); }

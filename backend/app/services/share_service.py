@@ -24,6 +24,7 @@ from backend.app.schemas.share import (
 )
 from backend.app.services.verification_service import VerificationService
 from backend.app.services.audit_service import append_audit, log_access_denied
+from backend.app.services.pki_verification import signing_certificate
 from backend.app.storage.base import IStorageService
 
 logger = logging.getLogger("docsign.share")
@@ -116,6 +117,8 @@ def create_share(
         raise HTTPException(422, "Dữ liệu bằng chứng chữ ký số không nhất quán với tài liệu")
 
     dims = result.results
+    if signature.signature_format == 'DETACHED_JCS_V2' and result.summary_status != 'VERIFIED':
+        raise HTTPException(422, 'Chứng chỉ hoặc ràng buộc danh tính không còn hợp lệ')
     cv = getattr(dims.cryptographic_validity, "value", str(dims.cryptographic_validity))
     if cv != "VALID":
         raise HTTPException(422, "Chữ ký số không hợp lệ về mặt toán học mật mã")
@@ -148,6 +151,10 @@ def create_share(
     db.rollback()
     try:
         db.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        if signature.signature_format == 'DETACHED_JCS_V2':
+            from backend.app.crypto.jcs import parse_strict_json
+            manifest = parse_strict_json(signature.canonical_manifest_json)
+            signing_certificate(db, user_id, key_id, certificate_sha256=manifest['certificate_sha256'])
         eligible = (
             select(literal(share_id), DocumentVersion.id, literal(user_id),
                    literal(token_hash_val), literal(now), literal(expires_at), literal(clean_label))
@@ -297,6 +304,8 @@ def verify_share(
     raw_tl = getattr(dims.timestamp_trust_level, "value", str(dims.timestamp_trust_level))
 
     public_dims = PublicVerificationDimensions(
+        **{name: getattr(dims, name) for name in ('certificate_binding', 'certificate_chain', 'certificate_validity',
+            'certificate_revocation', 'identity_binding', 'identity_assurance', 'trust_scope')},
         cryptographic_validity=raw_cv,
         document_integrity=raw_di,
         key_ownership=raw_ko,
@@ -305,6 +314,9 @@ def verify_share(
         declared_timestamp=raw_ts,
         verification_time=dims.verification_time,
         timestamp_trust_level=raw_tl,
+        trusted_timestamp=dims.trusted_timestamp,
+        timestamp_status=dims.timestamp_status,
+        timestamp_scope=dims.timestamp_scope,
     )
 
     summary_val = getattr(result.summary_status, "value", str(result.summary_status))

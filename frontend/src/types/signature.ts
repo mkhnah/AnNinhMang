@@ -1,4 +1,4 @@
-export interface SignedManifest {
+export interface SignedManifestV1 {
     manifest_version: 1;
     document_version_id: string;
     document_sha256: string;
@@ -10,10 +10,20 @@ export interface SignedManifest {
     signing_context: 'DOCSIGN_DOCUMENT_SIGNATURE_V1';
 }
 
+export interface SignedManifestV2 extends Omit<SignedManifestV1, 'manifest_version' | 'signing_context'> {
+    manifest_version: 2;
+    signing_context: 'DOCSIGN_DOCUMENT_SIGNATURE_V2';
+    signer_user_id: string;
+    certificate_sha256: string;
+}
+export type SignedManifest = SignedManifestV1 | SignedManifestV2;
+
 export interface PrepareSignResponse {
     manifest: SignedManifest;
     manifest_sha256: string;
     expires_at: string;
+    certificate_pem?: string | null;
+    issuer_certificate_pem?: string | null;
 }
 
 export interface SignatureSubmitRequest {

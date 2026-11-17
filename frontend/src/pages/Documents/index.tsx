@@ -47,7 +47,7 @@ export function UploadPanel({ documentId, onSuccess }: { documentId?: string; on
     <button type="button" disabled={busy} className={`dropzone ${dragging ? 'dragging' : ''}`}
       onClick={() => input.current?.click()} onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)} onDrop={e => { e.preventDefault(); setDragging(false); void upload(e.dataTransfer.files[0]); }}>
-      <UploadCloud size={30} aria-hidden="true" /><span><strong>{documentId ? 'Thêm phiên bản PDF' : 'Lưu một tài liệu mới'}</strong><small>Kéo thả PDF hoặc bấm để chọn · Tối đa {maxBytes / 1024 / 1024} MB</small></span>
+      <UploadCloud size={26} aria-hidden="true" /><span><strong>{documentId ? 'Thêm phiên bản PDF' : 'Tải tài liệu lên'}</strong></span><span className="upload-button-label">Chọn PDF</span>
     </button>
     <input aria-label="Chọn PDF" ref={input} type="file" accept=".pdf,application/pdf" hidden disabled={busy} onChange={e => void upload(e.target.files?.[0])} />
     {busy && <div className="upload-status" role="status"><progress max={100} value={progress} aria-label="Tiến độ tải lên" /><span>{progress < 100 ? `Đang tải ${progress}%` : 'Đang kiểm tra và lưu PDF…'}</span></div>}
@@ -67,12 +67,12 @@ export function Documents() {
   }, [offset]);
   useEffect(() => { void load(); }, [load]);
   return <div className="documents-page">
-    <header className="documents-heading"><div><h1>Tài liệu của bạn</h1><p>Lưu bản gốc. Theo dõi từng phiên bản.</p></div><ShieldCheck size={36} className="document-seal" /></header>
+    <header className="documents-heading"><h1>Tài liệu của tôi</h1></header>
     <UploadPanel onSuccess={() => { if (offset) setOffset(0); else void load(); }} />
     <section className="document-register" aria-label="Danh sách tài liệu">
-      <div className="register-heading"><h2>Kho tài liệu</h2><span>{total} tài liệu · Riêng tư</span></div>
+      <div className="register-heading"><h2>Kho tài liệu</h2><span className="ui-badge">{total} tài liệu</span></div>
       {error && <p role="alert" className="document-error">{error} <button onClick={() => void load()}>Thử lại</button></p>}
-      {loading ? <p role="status" className="document-empty">Đang tải tài liệu…</p> : items.length === 0 && !error ? <div className="document-empty"><FileText size={36} /><h3>Kho tài liệu đang trống</h3><p>Chọn PDF phía trên để lưu tài liệu đầu tiên.</p></div> : <ul className="document-list">{items.map(item => <li key={item.id}><Link to={`/documents/${item.id}`}><FileText size={24} /><div><strong>{item.title}</strong><small>Cập nhật {date(item.updated_at)}</small></div><span className="private-tag"><Lock size={13} /> Riêng tư</span></Link></li>)}</ul>}
+      {loading ? <p role="status" className="document-empty">Đang tải tài liệu…</p> : items.length === 0 && !error ? <div className="document-empty"><FileText size={36} /><h3>Kho tài liệu đang trống</h3></div> : <ul className="document-list">{items.map(item => <li key={item.id}><Link to={`/documents/${item.id}`}><FileText size={24} /><div><strong>{item.title}</strong><small>{date(item.updated_at)}</small></div><span className="private-tag"><Lock size={13} /> Riêng tư</span></Link></li>)}</ul>}
       {total > 20 && <div className="document-pagination"><button disabled={offset === 0 || loading} onClick={() => setOffset(offset - 20)}>Trang trước</button><span>{offset + 1}–{Math.min(offset + 20, total)} / {total}</span><button disabled={offset + 20 >= total || loading} onClick={() => setOffset(offset + 20)}>Trang sau</button></div>}
     </section>
   </div>;
@@ -139,7 +139,7 @@ function DocumentDetailContent() {
   return <div className="documents-page"><Link to="/documents" className="document-back"><ArrowLeft size={16} /> Kho tài liệu</Link>
     {error && <p role="alert" className="document-error">{error}</p>}
     {loading ? <p role="status">Đang tải phiên bản…</p> : doc && <>
-      <header className="documents-heading"><div><h1>{doc.title}</h1><p>Mỗi phiên bản giữ nguyên nội dung PDF đã tải lên.</p></div><Lock className="document-seal" size={30} /></header>
+      <header className="documents-heading"><div><h1>{doc.title}</h1></div><Lock className="document-seal" size={30} /></header>
       <UploadPanel documentId={id} onSuccess={() => void load()} />
       <section className="document-register"><div className="register-heading"><h2>Lịch sử phiên bản</h2><span>Mới nhất trước</span></div>
         <ol className="version-list">{versions.map(version => <li key={version.id}>

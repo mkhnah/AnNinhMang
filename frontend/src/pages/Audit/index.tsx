@@ -83,7 +83,7 @@ function AuditBrowser({ filters, onFilter }: { filters: AuditFilters; onFilter: 
       <div className="flex flex-wrap justify-between items-start gap-4 mb-7">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Nhật ký kiểm toán</h1>
-          <p className="text-sm text-slate-500 mt-2">Tra cứu hoạt động, kết quả và các mắt xích của chuỗi băm.</p>
+
         </div>
         <button onClick={refresh} disabled={loading} className="inline-flex gap-2 items-center px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white disabled:opacity-50">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Làm mới

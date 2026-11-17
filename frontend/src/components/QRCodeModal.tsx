@@ -72,10 +72,8 @@ export function QRCodeModal({ share, onClose }: { share: ShareLink; onClose: () 
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Mã QR Xác Minh</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Mã QR chứa mã thông báo truy cập công khai. Người quét có thể kiểm tra chữ ký mà không cần tài khoản.
-            </p>
+            <h2 className="text-xl font-semibold text-slate-900">Mã QR xác minh</h2>
+
           </div>
           <button
             aria-label="Đóng"
@@ -96,7 +94,7 @@ export function QRCodeModal({ share, onClose }: { share: ShareLink; onClose: () 
           <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
             <QRCodeCanvas id="share-qr" value={share.share_url} size={220} includeMargin />
           </div>
-          <span className="mt-2 text-[11px] text-slate-400">Quét mã bằng camera điện thoại để xác minh</span>
+
         </div>
 
         <div className="space-y-2">

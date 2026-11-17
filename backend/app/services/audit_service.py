@@ -30,8 +30,16 @@ DETAIL_FIELDS = {
     "SHARE_REVOKE": set(),
     "ACCESS_DENIED_IDOR": {"reason"},
     "ACCESS_DENIED_ROLE": {"reason"},
+    "CERTIFICATE_ISSUE": {"key_id", "fingerprint"},
+    "CERTIFICATE_RENEW": {"key_id", "fingerprint"},
+    "CERTIFICATE_REVOKE": set(),
+    "CERTIFICATE_VERIFY": {"fingerprint", "outcome"},
+    "IDENTITY_REVIEW": {"outcome"},
+    "CA_ROTATE": {"fingerprint"},
+    "CA_COMPROMISED": {"fingerprint"},
 }
 ENUM_VALUES = {
+    "outcome": {"APPROVED", "REJECTED", "VALID", "INVALID", "POSSESSION_VERIFIED"},
     "algorithm": {"RSA-PSS-3072"},
     "reason": {"INVALID_CREDENTIALS", "LOCKED", "DISABLED", "OWNER_MISMATCH", "RESOURCE_UNAVAILABLE", "ROLE_REQUIRED"},
     "verification_mode": {"INTERNAL", "INDEPENDENT_DETACHED", "PUBLIC_SHARED"},
@@ -39,7 +47,7 @@ ENUM_VALUES = {
     "cryptographic_validity": {"VALID", "INVALID", "UNVERIFIABLE"},
     "document_integrity": {"UNCHANGED", "TAMPERED", "UNKNOWN"},
 }
-TARGET_TYPES = {"USER", "KEY", "CHALLENGE", "DOCUMENT", "VERSION", "SIGNING_SESSION", "SHARE", "VERIFICATION"}
+TARGET_TYPES = {"USER", "KEY", "CHALLENGE", "DOCUMENT", "VERSION", "SIGNING_SESSION", "SHARE", "VERIFICATION", "CERTIFICATE", "CA", "IDENTITY_REVIEW"}
 USER_AGENTS = ("Firefox", "Edg", "Chrome", "Safari")
 
 

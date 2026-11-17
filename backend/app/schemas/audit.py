@@ -49,7 +49,7 @@ class VerificationDay(BaseModel):
 
 
 class SecurityAlert(BaseModel):
-    code: Literal["REPEATED_VERIFICATION_FAILURE", "IDOR_ATTEMPT"]
+    code: Literal["REPEATED_VERIFICATION_FAILURE", "REPEATED_CERTIFICATE_FAILURE", "IDOR_ATTEMPT", "CA_UNTRUSTED", "CERTIFICATE_EXPIRING"]
     actor_id: str | None
     client_ip: str | None
     count: int
@@ -63,6 +63,7 @@ class SecurityAlert(BaseModel):
 
 
 class DashboardStats(BaseModel):
+    pki_counts: dict[str, int] = {}
     generated_at: datetime
     total_documents: int
     total_versions: int

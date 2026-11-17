@@ -8,6 +8,7 @@ from backend.app.models.document import Document, DocumentVersion, VersionState
 from backend.app.models.enums import KeyStatus
 from backend.app.models.key import PublicKey
 from backend.app.models.verification import VerificationEvent
+from backend.app.models.certificate import Certificate, CertificateAuthority, IdentityReview
 from backend.app.schemas.verify import VerificationSummaryStatus
 from backend.app.services.audit_service import begin_read_snapshot
 
@@ -29,26 +30,29 @@ def security_alerts(db, now):
     identified = (AuditLog.actor_id.is_not(None) | AuditLog.client_ip.is_not(None))
     # A corrupted details column must remain inspectable through the admin UI.
     summary = case(
+        ((AuditLog.action == 'CERTIFICATE_VERIFY') & (AuditLog.status == 'FAILURE'), literal('UNVERIFIABLE')),
+        ((AuditLog.action == 'CERTIFICATE_VERIFY') & (AuditLog.status == 'SUCCESS'), literal('VERIFIED')),
         (func.json_valid(AuditLog.details_json) == 1, func.json_extract(AuditLog.details_json, "$.summary_status")),
         else_=None,
     )
     recent_verifications = select(
-        principal.label("principal"), AuditLog.actor_id, AuditLog.client_ip, AuditLog.created_at,
+        principal.label("principal"), AuditLog.actor_id, AuditLog.client_ip, AuditLog.created_at, AuditLog.action,
         summary.label("summary"),
-        func.row_number().over(partition_by=principal, order_by=AuditLog.id.desc()).label("position"),
+        func.row_number().over(partition_by=(principal, AuditLog.action), order_by=AuditLog.id.desc()).label("position"),
     ).where(
-        AuditLog.action == "DOCUMENT_VERIFY", AuditLog.created_at >= cutoff,
+        AuditLog.action.in_(['DOCUMENT_VERIFY', 'CERTIFICATE_VERIFY']), AuditLog.created_at >= cutoff,
         AuditLog.created_at <= now, identified,
     ).cte("recent_verifications")
     failures = select(
-        literal("REPEATED_VERIFICATION_FAILURE").label("code"),
+        case((recent_verifications.c.action == 'CERTIFICATE_VERIFY', literal('REPEATED_CERTIFICATE_FAILURE')),
+             else_=literal("REPEATED_VERIFICATION_FAILURE")).label("code"),
         recent_verifications.c.actor_id,
         func.max(recent_verifications.c.client_ip).label("client_ip"),
         func.count().label("count"),
         func.min(recent_verifications.c.created_at).label("first_at"),
         func.max(recent_verifications.c.created_at).label("last_at"),
     ).where(recent_verifications.c.position <= VERIFICATION_FAILURE_THRESHOLD).group_by(
-        recent_verifications.c.principal, recent_verifications.c.actor_id,
+        recent_verifications.c.principal, recent_verifications.c.actor_id, recent_verifications.c.action,
     ).having(
         func.count() == VERIFICATION_FAILURE_THRESHOLD,
         func.sum(case((recent_verifications.c.summary.in_(UNSUCCESSFUL_STATUSES), 1), else_=0)) == VERIFICATION_FAILURE_THRESHOLD,
@@ -95,12 +99,27 @@ def dashboard_stats(db):
         row = by_day.get(day, {})
         days.append({"date": day, "verified": row.get("verified", 0), "unsuccessful": row.get("unsuccessful", 0)})
     alerts, alert_total = security_alerts(db, now)
+    pki_counts = {
+        'certificates': db.scalar(select(func.count()).select_from(Certificate)),
+        'revoked': db.scalar(select(func.count()).select_from(Certificate).where(Certificate.revoked_at.is_not(None))),
+        'expiring': db.scalar(select(func.count()).select_from(Certificate).where(Certificate.revoked_at.is_(None),
+            Certificate.not_after > now, Certificate.not_after <= now + timedelta(days=30))),
+        'pending_reviews': db.scalar(select(func.count()).select_from(IdentityReview).where(IdentityReview.status == 'PENDING')),
+        'untrusted_authorities': db.scalar(select(func.count()).select_from(CertificateAuthority).where(CertificateAuthority.trust_status != 'TRUSTED')),
+    }
+    alerts = list(alerts)
+    for key, code in [('expiring', 'CERTIFICATE_EXPIRING'), ('untrusted_authorities', 'CA_UNTRUSTED')]:
+        if pki_counts[key]:
+            alert_total += 1
+            alerts.insert(0, dict(code=code, actor_id=None, client_ip=None, count=pki_counts[key], first_at=now, last_at=now))
+    alerts = alerts[:ALERT_LIMIT]
     verification_counts = []
     for status in VerificationSummaryStatus:
         verification_counts.append({"status": status.value, "count": counts.pop(status.value, 0)})
     if counts:
         verification_counts.append({"status": "OTHER", "count": sum(counts.values())})
     return {
+        "pki_counts": pki_counts,
         "generated_at": now,
         "total_documents": db.scalar(select(func.count()).select_from(Document)),
         "total_versions": db.scalar(select(func.count()).select_from(DocumentVersion)),

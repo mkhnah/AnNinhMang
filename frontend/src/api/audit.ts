@@ -3,9 +3,12 @@ import api from './client';
 export const auditActions = [
   'USER_LOGIN', 'KEY_GENERATE', 'KEY_REVOKE', 'DOCUMENT_UPLOAD', 'DOCUMENT_SIGN',
   'DOCUMENT_VERIFY', 'SHARE_QR', 'SHARE_REVOKE', 'ACCESS_DENIED_IDOR', 'ACCESS_DENIED_ROLE',
+  'CERTIFICATE_ISSUE', 'CERTIFICATE_RENEW', 'CERTIFICATE_REVOKE', 'CERTIFICATE_VERIFY', 'IDENTITY_REVIEW', 'CA_ROTATE', 'CA_COMPROMISED',
 ] as const;
 
 export const actionLabels: Record<string, string> = {
+  CERTIFICATE_ISSUE:'Cấp chứng chỉ', CERTIFICATE_RENEW:'Gia hạn chứng chỉ', CERTIFICATE_REVOKE:'Thu hồi chứng chỉ',
+  CERTIFICATE_VERIFY:'Kiểm tra chứng chỉ / sở hữu khóa', IDENTITY_REVIEW:'Đối chiếu danh tính', CA_ROTATE:'Cấu hình phát hành CA', CA_COMPROMISED:'CA bị lộ khóa',
   USER_LOGIN: 'Đăng nhập', KEY_GENERATE: 'Đăng ký khóa', KEY_REVOKE: 'Thu hồi khóa',
   DOCUMENT_UPLOAD: 'Tải lên tài liệu', DOCUMENT_SIGN: 'Ký tài liệu', DOCUMENT_VERIFY: 'Xác minh tài liệu',
   SHARE_QR: 'Tạo chia sẻ QR', SHARE_REVOKE: 'Thu hồi chia sẻ',
@@ -61,7 +64,7 @@ export interface AuditFilters {
 }
 
 export interface SecurityAlert {
-  code: 'REPEATED_VERIFICATION_FAILURE' | 'IDOR_ATTEMPT';
+  code: 'REPEATED_VERIFICATION_FAILURE' | 'REPEATED_CERTIFICATE_FAILURE' | 'IDOR_ATTEMPT' | 'CA_UNTRUSTED' | 'CERTIFICATE_EXPIRING';
   actor_id: string | null;
   client_ip: string | null;
   count: number;
@@ -70,6 +73,7 @@ export interface SecurityAlert {
 }
 
 export interface DashboardStats {
+  pki_counts?: Record<string, number>;
   generated_at: string;
   total_documents: number;
   total_versions: number;

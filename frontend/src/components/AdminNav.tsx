@@ -6,6 +6,7 @@ export function AdminNav() {
       {[
         ['/admin/dashboard', 'Tổng quan an ninh'],
         ['/admin/audit', 'Nhật ký kiểm toán'],
+        ['/admin/pki', 'CA và danh tính'],
         ['/admin', 'Tài khoản'],
       ].map(([to, label]) => (
         <NavLink key={to} to={to} end className={({ isActive }) =>

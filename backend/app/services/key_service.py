@@ -19,6 +19,15 @@ from backend.app.models.enums import KeyStatus
 from backend.app.models.key import PublicKey, SigningChallenge
 from backend.app.schemas.key import ChallengeCreateRequest, ChallengeResponse, KeyRegisterRequest, PublicKeyResponse
 from backend.app.services.audit_service import append_audit, log_access_denied
+from backend.app.core.config import settings
+from backend.app.services import certificate_service
+
+
+def key_response(db, key, certificate=None):
+    result = PublicKeyResponse.model_validate(key)
+    if certificate is not None:
+        result.certificate = certificate_service.certificate_response(db, certificate)
+    return result
 
 
 def utc_now() -> datetime:
@@ -144,6 +153,14 @@ class KeyService:
     ) -> PublicKeyResponse:
         now = utc_now()
 
+        operation = None
+        if settings.PKI_ENABLED:
+            operation = certificate_service.operation_identity("REGISTER_KEY", req.model_dump(),
+                req.idempotency_key or req.challenge_id)
+            previous = certificate_service.find_operation(db, user_id, operation)
+            if previous is not None:
+                return key_response(db, db.get(PublicKey, previous.key_id, populate_existing=True), previous)
+
         # 1. Parse PEM and validate cryptographic properties
         try:
             public_key = serialization.load_pem_public_key(req.public_key_pem.encode("utf-8"))
@@ -201,6 +218,11 @@ class KeyService:
             )
 
         if challenge.is_used:
+            if operation is not None:
+                db.rollback()
+                previous = certificate_service.find_operation(db, user_id, operation)
+                if previous is not None:
+                    return key_response(db, db.get(PublicKey, previous.key_id, populate_existing=True), previous)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Challenge này đã được sử dụng trước đó (Replay attack prevented)"
@@ -236,6 +258,10 @@ class KeyService:
             select(PublicKey).where(PublicKey.fingerprint == computed_fingerprint)
         )
         if existing_key:
+            if operation is not None:
+                previous = certificate_service.find_operation(db, user_id, operation)
+                if previous is not None:
+                    return key_response(db, existing_key, previous)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Khóa công khai với fingerprint '{computed_fingerprint}' đã tồn tại trong hệ thống"
@@ -281,6 +307,11 @@ class KeyService:
                 detail=f"Lỗi khi xác minh chữ ký PoP: {str(e)}"
             )
 
+        candidate = None
+        if operation is not None:
+            certificate_service.check_issuance_quota(db, user_id)
+            candidate = certificate_service.prepare_for_user(db, user_id, public_key)
+
         # 7. Atomic Conditional UPDATE to consume challenge and insert key atomically
         # Prevents race conditions on SQLite without long locks.
         try:
@@ -303,6 +334,10 @@ class KeyService:
             result = db.execute(update_stmt)
             if result.rowcount != 1:
                 db.rollback()
+                if operation is not None:
+                    previous = certificate_service.find_operation(db, user_id, operation)
+                    if previous is not None:
+                        return key_response(db, db.get(PublicKey, previous.key_id, populate_existing=True), previous)
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Challenge này đã được sử dụng trước đó hoặc đã hết hạn (Race condition prevented)"
@@ -327,14 +362,22 @@ class KeyService:
             db.add(new_key)
             append_audit(db, "KEY_GENERATE", actor_id=user_id, target_type="KEY", target_id=new_key.id,
                          details={"algorithm": new_key.algorithm, "fingerprint": computed_fingerprint})
+            certificate = None
+            if candidate is not None:
+                certificate = certificate_service.persist_certificate(db, user_id, new_key.id, candidate, operation)
             db.commit()
             db.refresh(new_key)
 
-            return PublicKeyResponse.model_validate(new_key)
+            return key_response(db, new_key, certificate)
         except HTTPException:
+            db.rollback()
             raise
         except IntegrityError as e:
             db.rollback()
+            if operation is not None:
+                previous = certificate_service.find_operation(db, user_id, operation)
+                if previous is not None:
+                    return key_response(db, db.get(PublicKey, previous.key_id, populate_existing=True), previous)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Xung đột dữ liệu: khóa đã đăng ký hoặc challenge không còn hợp lệ"
@@ -391,6 +434,7 @@ class KeyService:
             PublicKey.id == key_id, PublicKey.user_id == user_id, PublicKey.status != KeyStatus.REVOKED
         ).values(status=KeyStatus.REVOKED, revoked_at=utc_now()).execution_options(synchronize_session=False))
         if changed.rowcount == 1:
+            certificate_service.revoke_certificates_for_key(db, key_id, user_id)
             append_audit(db, "KEY_REVOKE", actor_id=user_id, target_type="KEY", target_id=key_id,
                          details={"fingerprint": key.fingerprint})
         db.commit()

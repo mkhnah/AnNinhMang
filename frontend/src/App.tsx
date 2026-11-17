@@ -15,6 +15,9 @@ import { NotFound } from './pages/NotFound';
 import { PublicShare } from './pages/Verify/PublicShare';
 import { Dashboard } from './pages/Dashboard';
 import { Audit } from './pages/Audit';
+import { Certificates } from './pages/Certificates';
+import { PkiVerify } from './pages/Verify/PkiVerify';
+import { UserLookup } from './pages/Verify/UserLookup';
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -27,9 +30,9 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <div className="app-shell">
           <Navbar />
-          <main className="flex-1">
+          <main className="app-content">
             <Routes>
               {/* Public Only Routes */}
               <Route
@@ -51,6 +54,11 @@ export const App: React.FC = () => {
 
               {/* Public Independent Verification Route */}
               <Route path="/verify" element={<IndependentVerify />} />
+              <Route path="/verify/certificate" element={<PkiVerify key="certificate" />} />
+              <Route path="/verify/signature" element={<PkiVerify key="signature" signature />} />
+              <Route path="/verify/users" element={<ProtectedRoute><UserLookup /></ProtectedRoute>} />
+              <Route path="/certificates" element={<ProtectedRoute><Certificates key="owner" /></ProtectedRoute>} />
+              <Route path="/admin/pki" element={<ProtectedRoute requiredRole="ADMIN"><Certificates key="admin" admin /></ProtectedRoute>} />
               <Route path="/verify/share/:token" element={<PublicShare />} />
 
               {/* Protected User Routes */}

@@ -51,7 +51,7 @@ export const Profile: React.FC = () => {
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Hồ sơ người dùng</h1>
-        <p className="text-sm text-slate-500">Quản lý danh tính, bảo mật phiên và thông tin tài khoản</p>
+
       </div>
 
       {/* Messages */}
@@ -135,9 +135,7 @@ export const Profile: React.FC = () => {
               <LogOut className="w-5 h-5 text-rose-600" />
               Quản lý phiên đăng nhập
             </h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Trong trường hợp nghi ngờ tài khoản bị lộ hoặc quên đăng xuất trên thiết bị công cộng, bạn có thể vô hiệu hóa toàn bộ các phiên làm việc đang hoạt động.
-            </p>
+
 
             <button
               onClick={handleLogoutAll}

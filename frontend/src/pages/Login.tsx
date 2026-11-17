@@ -15,7 +15,8 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const destination = (location.state as { from?: { pathname: string; search?: string } })?.from;
+  const from = destination ? destination.pathname + (destination.search || '') : '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +58,7 @@ export const Login: React.FC = () => {
             <ShieldCheck className="w-7 h-7" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Đăng nhập hệ thống</h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Hệ thống Ký số và Xác thực Tài liệu Điện tử An toàn
-          </p>
+
         </div>
 
         {/* Error Alert */}

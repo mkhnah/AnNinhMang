@@ -78,7 +78,7 @@ export const SignatureDetailsModal: React.FC<SignatureDetailsModalProps> = ({
                         </div>
                         <div>
                             <h2 id="sig-modal-title" className="text-lg font-bold text-slate-800">
-                                Chi tiết chữ ký số Detached
+                                Chi tiết chữ ký
                             </h2>
                             <p className="text-xs text-slate-500">
                                 {documentTitle} · Phiên bản v{versionNo}
@@ -113,7 +113,7 @@ export const SignatureDetailsModal: React.FC<SignatureDetailsModalProps> = ({
                         <div className="space-y-4">
                             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                                 <span className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
-                                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Chữ ký hợp lệ (Status: SIGNED)
+                                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Đã ký
                                 </span>
                                 <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-900">
                                     {signature.signature_format}
@@ -157,7 +157,7 @@ export const SignatureDetailsModal: React.FC<SignatureDetailsModalProps> = ({
 
                                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-slate-500 font-medium">Khóa ký ID (Public Key ID)</span>
+                                        <span className="text-slate-500 font-medium">Mã khóa ký</span>
                                         <button
                                             type="button"
                                             onClick={() => copyText(signature.key_id, 'key_id')}
@@ -178,7 +178,7 @@ export const SignatureDetailsModal: React.FC<SignatureDetailsModalProps> = ({
 
                                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-slate-500 font-medium">Chữ ký số Base64 (RSA-PSS)</span>
+                                        <span className="text-slate-500 font-medium">Chữ ký Base64</span>
                                         <button
                                             type="button"
                                             onClick={() => copyText(signature.signature_b64, 'sig')}

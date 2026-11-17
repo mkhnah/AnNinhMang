@@ -1,4 +1,6 @@
 export interface PublicKeyDto {
+    current_certificate_id?: string | null;
+    certificate?: import('./pki').CertificateDto | null;
     id: string;
     algorithm: string;
     fingerprint: string;
